@@ -72,8 +72,11 @@ On first launch, macOS will ask you to grant **Accessibility** permission:
 1. Go to **System Settings → Privacy & Security → Accessibility**
 2. Enable **Monitor** in the list
 
-> **Note:** Since the app is not yet code-signed, macOS may block it. To open it:
-> Right-click the app → **Open** → click **Open** in the dialog. You only need to do this once.
+> **Note:** The app is not yet code-signed, so macOS will block it. After dragging to Applications, run this in Terminal:
+> ```bash
+> xattr -d com.apple.quarantine /Applications/Monitor.app
+> ```
+> Then launch the app normally. You only need to do this once.
 
 ## Development
 

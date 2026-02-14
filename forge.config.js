@@ -6,7 +6,7 @@ module.exports = {
     extendInfo: {
       LSUIElement: true
     },
-    osxSign: {},
+    osxSign: process.env.APPLE_ID ? {} : undefined,
     osxNotarize: process.env.APPLE_ID ? {
       appleId: process.env.APPLE_ID,
       appleIdPassword: process.env.APPLE_PASSWORD,
