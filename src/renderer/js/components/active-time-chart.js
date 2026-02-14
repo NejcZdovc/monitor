@@ -7,17 +7,19 @@ class ActiveTimeChart {
   async render(startMs, endMs, rangeType) {
     let data, labels, activeData, idleData;
 
+    const useMinutes = rangeType === 'today';
+    const convert = useMinutes ? (ms) => ms / 60000 : msToHours;
+
     if (rangeType === 'today') {
       data = await window.monitor.getHourlyActivity(startMs, endMs);
       labels = data.map(d => DateUtils.formatHourLabel(d.hour));
-      activeData = data.map(d => msToHours(d.active_ms));
-      idleData = data.map(d => msToHours(d.idle_ms));
     } else {
       data = await window.monitor.getDailyActivity(startMs, endMs);
       labels = data.map(d => DateUtils.formatDateLabel(d.date));
-      activeData = data.map(d => msToHours(d.active_ms));
-      idleData = data.map(d => msToHours(d.idle_ms));
     }
+
+    activeData = data.map(d => convert(d.active_ms));
+    idleData = data.map(d => convert(d.idle_ms));
 
     if (this.chart) this.chart.destroy();
     this.chart = null;
@@ -61,7 +63,7 @@ class ActiveTimeChart {
           y: {
             stacked: true,
             beginAtZero: true,
-            title: { display: true, text: 'Hours', color: '#858585' },
+            title: { display: true, text: useMinutes ? 'Minutes' : 'Hours', color: '#858585' },
             grid: { color: 'rgba(255,255,255,0.04)' },
             ticks: { color: '#858585', font: { size: 11 } }
           }
@@ -70,7 +72,10 @@ class ActiveTimeChart {
           legend: { labels: { color: '#d4d4d4', boxWidth: 12, padding: 16 } },
           tooltip: {
             callbacks: {
-              label: (ctx) => `${ctx.dataset.label}: ${formatDuration(ctx.raw * 3600000)}`
+              label: (ctx) => {
+                const ms = useMinutes ? ctx.raw * 60000 : ctx.raw * 3600000;
+                return `${ctx.dataset.label}: ${formatDuration(ms)}`;
+              }
             }
           }
         }

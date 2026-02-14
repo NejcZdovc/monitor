@@ -96,6 +96,16 @@ class QueryEngine {
     `).all(startMs, endMs);
   }
 
+  getAppsByCategory(category, startMs, endMs) {
+    return this.db.prepare(`
+      SELECT app_name, category, SUM(duration_ms) as total_ms
+      FROM activity_sessions
+      WHERE category = ? AND started_at >= ? AND (ended_at <= ? OR ended_at IS NULL) AND is_idle = 0
+      GROUP BY app_name
+      ORDER BY total_ms DESC
+    `).all(category, startMs, endMs);
+  }
+
   getTopApp(startMs, endMs) {
     return this.db.prepare(`
       SELECT app_name, SUM(duration_ms) as total_ms

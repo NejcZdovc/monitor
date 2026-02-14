@@ -1,4 +1,6 @@
-const { app, BrowserWindow, systemPreferences } = require('electron');
+const { app, BrowserWindow, systemPreferences, nativeImage } = require('electron');
+const path = require('path');
+const { updateElectronApp } = require('update-electron-app');
 const { AppDatabase } = require('./data/database');
 const { QueryEngine } = require('./data/query-engine');
 const { TrackerManager } = require('./tracking/tracker-manager');
@@ -17,6 +19,12 @@ if (app.dock) {
   app.dock.hide();
 }
 
+// Auto-update (checks every hour, notifies user when update is available)
+updateElectronApp({
+  updateInterval: '1 hour',
+  notifyUser: true
+});
+
 let database, trackerManager, queryEngine, tray;
 
 app.on('second-instance', () => {
@@ -24,6 +32,12 @@ app.on('second-instance', () => {
 });
 
 app.whenReady().then(async () => {
+  // Set dock icon
+  if (app.dock) {
+    const iconPath = path.join(__dirname, '../../assets/icon.png');
+    app.dock.setIcon(nativeImage.createFromPath(iconPath));
+  }
+
   // Prompt for accessibility (non-blocking, just triggers the macOS dialog)
   systemPreferences.isTrustedAccessibilityClient(true);
 

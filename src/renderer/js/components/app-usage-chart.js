@@ -14,14 +14,20 @@ const CATEGORY_COLORS = {
 };
 
 class AppUsageChart {
-  constructor(categoryCanvasId, appsCanvasId) {
+  constructor(categoryCanvasId, appsCanvasId, categoryDetail) {
     this.categoryCanvas = document.getElementById(categoryCanvasId);
     this.appsCanvas = document.getElementById(appsCanvasId);
     this.categoryChart = null;
     this.appsChart = null;
+    this.categoryDetail = categoryDetail;
+    this.startMs = null;
+    this.endMs = null;
   }
 
   async render(startMs, endMs) {
+    this.startMs = startMs;
+    this.endMs = endMs;
+
     const [categories, apps] = await Promise.all([
       window.monitor.getCategoryBreakdown(startMs, endMs),
       window.monitor.getAppBreakdown(startMs, endMs)
@@ -43,6 +49,8 @@ class AppUsageChart {
     }
     hideEmptyState(this.categoryCanvas);
 
+    const self = this;
+
     this.categoryChart = new Chart(this.categoryCanvas, {
       type: 'doughnut',
       data: {
@@ -58,9 +66,36 @@ class AppUsageChart {
         responsive: true,
         maintainAspectRatio: false,
         cutout: '60%',
+        onHover: (event, elements) => {
+          event.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+        },
+        onClick: (event, elements) => {
+          if (elements.length > 0 && self.categoryDetail) {
+            const idx = elements[0].index;
+            const category = filtered[idx].category;
+            const totalMs = filtered[idx].total_ms;
+            const color = CATEGORY_COLORS[category] || CATEGORY_COLORS.Other;
+            self.categoryDetail.open(category, color, totalMs, self.startMs, self.endMs);
+          }
+        },
         plugins: {
           legend: {
             position: 'right',
+            onClick: (event, legendItem) => {
+              if (self.categoryDetail) {
+                const idx = legendItem.index;
+                const category = filtered[idx].category;
+                const totalMs = filtered[idx].total_ms;
+                const color = CATEGORY_COLORS[category] || CATEGORY_COLORS.Other;
+                self.categoryDetail.open(category, color, totalMs, self.startMs, self.endMs);
+              }
+            },
+            onHover: (event) => {
+              event.native.target.style.cursor = 'pointer';
+            },
+            onLeave: (event) => {
+              event.native.target.style.cursor = 'default';
+            },
             labels: {
               color: '#d4d4d4',
               boxWidth: 10,

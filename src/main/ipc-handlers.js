@@ -25,6 +25,10 @@ function registerIpcHandlers(queryEngine, trackerManager) {
     return queryEngine.getAppBreakdown(startMs, endMs);
   });
 
+  ipcMain.handle('get-apps-by-category', (event, category, startMs, endMs) => {
+    return queryEngine.getAppsByCategory(category, startMs, endMs);
+  });
+
   ipcMain.handle('get-call-time', (event, startMs, endMs) => {
     return queryEngine.getCallTimeByDay(startMs, endMs);
   });

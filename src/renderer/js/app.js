@@ -4,7 +4,8 @@ class Dashboard {
     this.timeRangePicker = new TimeRangePicker((range) => this.onRangeChange(range));
     this.activeTimeChart = new ActiveTimeChart('chart-active-time');
     this.inputChart = new InputChart('chart-input');
-    this.appUsageChart = new AppUsageChart('chart-categories', 'chart-apps');
+    this.categoryDetail = new CategoryDetail();
+    this.appUsageChart = new AppUsageChart('chart-categories', 'chart-apps', this.categoryDetail);
     this.callChart = new CallChart('chart-calls');
     this.youtubeChart = new YouTubeChart('chart-youtube');
 

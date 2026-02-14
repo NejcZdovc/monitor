@@ -104,6 +104,25 @@
     </section>
   </main>
 
+  <!-- Category Detail Modal -->
+  <div class="modal-overlay hidden" id="category-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title-row">
+          <span class="modal-color-dot" id="modal-color-dot"></span>
+          <h2 class="modal-title" id="modal-title">Category</h2>
+        </div>
+        <div class="modal-header-right">
+          <span class="modal-total" id="modal-total"></span>
+          <button class="modal-close" id="modal-close">&times;</button>
+        </div>
+      </div>
+      <div class="modal-body" id="modal-body">
+        <div class="modal-app-list" id="modal-app-list"></div>
+      </div>
+    </div>
+  </div>
+
   <script src="js/lib/chart.umd.js"></script>
   <script src="js/lib/chartjs-adapter-date-fns.bundle.js"></script>
   <script src="js/format-utils.js"></script>
@@ -112,6 +131,7 @@
   <script src="js/components/time-range-picker.js"></script>
   <script src="js/components/active-time-chart.js"></script>
   <script src="js/components/input-chart.js"></script>
+  <script src="js/components/category-detail.js"></script>
   <script src="js/components/app-usage-chart.js"></script>
   <script src="js/components/call-chart.js"></script>
   <script src="js/components/youtube-chart.js"></script>
