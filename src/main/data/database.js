@@ -4,7 +4,8 @@ const { app } = require('electron');
 
 class AppDatabase {
   constructor() {
-    const dbPath = path.join(app.getPath('userData'), 'monitor.db');
+    const dbName = app.isPackaged ? 'monitor.db' : 'monitor-dev.db';
+    const dbPath = path.join(app.getPath('userData'), dbName);
     this.db = new Database(dbPath);
     this.db.pragma('journal_mode = WAL');
     this.db.pragma('foreign_keys = ON');
