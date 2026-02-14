@@ -26,7 +26,7 @@ function createDashboardWindow() {
     title: 'Monitor',
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 15, y: 15 },
-    backgroundColor: '#121220',
+    backgroundColor: '#1e1e1e',
     webPreferences: {
       preload: path.join(__dirname, '../renderer/preload.js'),
       contextIsolation: true,

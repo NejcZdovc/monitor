@@ -7,8 +7,8 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
-      background: #1a1a2e;
-      color: #e8e8f0;
+      background: #1e1e1e;
+      color: #d4d4d4;
       -webkit-app-region: no-drag;
       user-select: none;
       overflow: hidden;
@@ -26,7 +26,7 @@
     .title {
       font-size: 11px;
       font-weight: 600;
-      color: #8888a8;
+      color: #858585;
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
@@ -41,20 +41,20 @@
       cursor: pointer;
     }
     .tracking-badge.active {
-      background: rgba(34, 197, 94, 0.15);
-      color: #22c55e;
+      background: rgba(78, 201, 176, 0.15);
+      color: #4ec9b0;
     }
     .tracking-badge.paused {
-      background: rgba(234, 179, 8, 0.15);
-      color: #eab308;
+      background: rgba(220, 220, 170, 0.15);
+      color: #dcdcaa;
     }
     .tracking-dot {
       width: 6px;
       height: 6px;
       border-radius: 50%;
     }
-    .tracking-badge.active .tracking-dot { background: #22c55e; }
-    .tracking-badge.paused .tracking-dot { background: #eab308; }
+    .tracking-badge.active .tracking-dot { background: #4ec9b0; }
+    .tracking-badge.paused .tracking-dot { background: #dcdcaa; }
 
     .stats-grid {
       display: grid;
@@ -65,12 +65,12 @@
       display: flex;
       flex-direction: column;
       padding: 8px 10px;
-      background: rgba(255, 255, 255, 0.04);
+      background: rgba(255, 255, 255, 0.05);
       border-radius: 8px;
     }
     .stat-label {
       font-size: 10px;
-      color: #8888a8;
+      color: #858585;
       margin-bottom: 3px;
     }
     .stat-value {
@@ -78,12 +78,12 @@
       font-weight: 600;
       font-variant-numeric: tabular-nums;
     }
-    .stat-item.active-time .stat-value { color: #6366f1; }
-    .stat-item.keystrokes .stat-value { color: #22c55e; }
-    .stat-item.clicks .stat-value { color: #3b82f6; }
-    .stat-item.calls .stat-value { color: #f97316; }
-    .stat-item.youtube .stat-value { color: #ef4444; }
-    .stat-item.top-app .stat-value { color: #a855f7; }
+    .stat-item.active-time .stat-value { color: #569cd6; }
+    .stat-item.keystrokes .stat-value { color: #4ec9b0; }
+    .stat-item.clicks .stat-value { color: #4fc1ff; }
+    .stat-item.calls .stat-value { color: #ce9178; }
+    .stat-item.youtube .stat-value { color: #f44747; }
+    .stat-item.top-app .stat-value { color: #c586c0; }
 
     .stat-item.top-app {
       grid-column: 1 / -1;
@@ -109,7 +109,7 @@
       padding: 7px 10px;
       border: none;
       background: none;
-      color: #e8e8f0;
+      color: #d4d4d4;
       font-size: 12px;
       font-family: inherit;
       border-radius: 6px;
@@ -132,7 +132,7 @@
       height: 14px;
     }
     .action-btn.quit {
-      color: #8888a8;
+      color: #858585;
     }
   </style>
 </head>

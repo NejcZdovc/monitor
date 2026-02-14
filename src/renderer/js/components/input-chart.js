@@ -24,8 +24,8 @@ class InputChart {
           {
             label: 'Keystrokes',
             data: data.map(d => d.key_count),
-            borderColor: '#6366f1',
-            backgroundColor: 'rgba(99,102,241,0.1)',
+            borderColor: '#569cd6',
+            backgroundColor: 'rgba(86,156,214,0.1)',
             fill: true,
             tension: 0.3,
             pointRadius: 0,
@@ -35,8 +35,8 @@ class InputChart {
           {
             label: 'Clicks',
             data: data.map(d => d.click_count),
-            borderColor: '#22c55e',
-            backgroundColor: 'rgba(34,197,94,0.1)',
+            borderColor: '#4ec9b0',
+            backgroundColor: 'rgba(78,201,176,0.1)',
             fill: true,
             tension: 0.3,
             pointRadius: 0,
@@ -60,17 +60,17 @@ class InputChart {
               }
             },
             grid: { color: 'rgba(255,255,255,0.04)' },
-            ticks: { color: '#8888a8', font: { size: 11 }, maxTicksLimit: 12 }
+            ticks: { color: '#858585', font: { size: 11 }, maxTicksLimit: 12 }
           },
           y: {
             beginAtZero: true,
-            title: { display: true, text: 'Count / min', color: '#8888a8' },
+            title: { display: true, text: 'Count / min', color: '#858585' },
             grid: { color: 'rgba(255,255,255,0.04)' },
-            ticks: { color: '#8888a8', font: { size: 11 } }
+            ticks: { color: '#858585', font: { size: 11 } }
           }
         },
         plugins: {
-          legend: { labels: { color: '#e8e8f0', boxWidth: 12, padding: 16 } },
+          legend: { labels: { color: '#d4d4d4', boxWidth: 12, padding: 16 } },
           tooltip: {
             callbacks: {
               title: (items) => {

@@ -36,7 +36,7 @@ class CallChart {
     const datasets = Object.entries(appMap).map(([appName, dateMap]) => ({
       label: appName,
       data: sortedDates.map(d => msToHours(dateMap[d] || 0)),
-      backgroundColor: CALL_COLORS[appName] || '#6366f1',
+      backgroundColor: CALL_COLORS[appName] || '#569cd6',
       borderRadius: 4,
       borderSkipped: false
     }));
@@ -54,18 +54,18 @@ class CallChart {
           x: {
             stacked: true,
             grid: { color: 'rgba(255,255,255,0.04)' },
-            ticks: { color: '#8888a8', font: { size: 11 } }
+            ticks: { color: '#858585', font: { size: 11 } }
           },
           y: {
             stacked: true,
             beginAtZero: true,
-            title: { display: true, text: 'Hours', color: '#8888a8' },
+            title: { display: true, text: 'Hours', color: '#858585' },
             grid: { color: 'rgba(255,255,255,0.04)' },
-            ticks: { color: '#8888a8', font: { size: 11 } }
+            ticks: { color: '#858585', font: { size: 11 } }
           }
         },
         plugins: {
-          legend: { labels: { color: '#e8e8f0', boxWidth: 12, padding: 16 } },
+          legend: { labels: { color: '#d4d4d4', boxWidth: 12, padding: 16 } },
           tooltip: {
             callbacks: {
               label: (ctx) => `${ctx.dataset.label}: ${formatDuration(ctx.raw * 3600000)}`

@@ -23,7 +23,7 @@ class YouTubeChart {
         datasets: [{
           label: 'YouTube',
           data: data.map(d => msToHours(d.total_ms)),
-          backgroundColor: '#ef4444',
+          backgroundColor: '#d16969',
           borderRadius: 4,
           borderSkipped: false
         }]
@@ -34,13 +34,13 @@ class YouTubeChart {
         scales: {
           x: {
             grid: { color: 'rgba(255,255,255,0.04)' },
-            ticks: { color: '#8888a8', font: { size: 11 } }
+            ticks: { color: '#858585', font: { size: 11 } }
           },
           y: {
             beginAtZero: true,
-            title: { display: true, text: 'Hours', color: '#8888a8' },
+            title: { display: true, text: 'Hours', color: '#858585' },
             grid: { color: 'rgba(255,255,255,0.04)' },
-            ticks: { color: '#8888a8', font: { size: 11 } }
+            ticks: { color: '#858585', font: { size: 11 } }
           }
         },
         plugins: {

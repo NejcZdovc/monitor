@@ -43,7 +43,7 @@ function showPopup() {
     fullscreenable: false,
     skipTaskbar: true,
     alwaysOnTop: true,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: '#1e1e1e',
     roundedCorners: true,
     hasShadow: true,
     webPreferences: {
