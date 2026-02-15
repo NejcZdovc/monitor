@@ -1,24 +1,24 @@
-const { app, BrowserWindow, screen, nativeImage } = require('electron');
-const path = require('path');
+const { app, BrowserWindow, screen, nativeImage } = require('electron')
+const path = require('node:path')
 
-let dashboardWindow = null;
+let dashboardWindow = null
 
 function createDashboardWindow() {
   if (dashboardWindow && !dashboardWindow.isDestroyed()) {
-    dashboardWindow.show();
-    dashboardWindow.focus();
-    return dashboardWindow;
+    dashboardWindow.show()
+    dashboardWindow.focus()
+    return dashboardWindow
   }
 
   // Use full height to show all charts without scrolling, clamped to screen
-  const DESIRED_WIDTH = 1100;
-  const DESIRED_HEIGHT = 1450;
-  const display = screen.getPrimaryDisplay();
-  const workArea = display.workArea;
-  const width = Math.min(DESIRED_WIDTH, workArea.width);
-  const height = Math.min(DESIRED_HEIGHT, workArea.height);
+  const DESIRED_WIDTH = 1100
+  const DESIRED_HEIGHT = 1450
+  const display = screen.getPrimaryDisplay()
+  const workArea = display.workArea
+  const width = Math.min(DESIRED_WIDTH, workArea.width)
+  const height = Math.min(DESIRED_HEIGHT, workArea.height)
 
-  const iconPath = path.join(__dirname, '../../assets/icon.png');
+  const iconPath = path.join(__dirname, '../../assets/icon.png')
 
   dashboardWindow = new BrowserWindow({
     width,
@@ -34,32 +34,32 @@ function createDashboardWindow() {
       preload: path.join(__dirname, '../renderer/preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false
-    }
-  });
+      sandbox: false,
+    },
+  })
 
-  dashboardWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
+  dashboardWindow.loadFile(path.join(__dirname, '../renderer/index.html'))
 
   // Show dock icon when dashboard is open
   if (app.dock) {
-    const iconPath = path.join(__dirname, '../../assets/icon.png');
-    app.dock.setIcon(nativeImage.createFromPath(iconPath));
-    app.dock.show();
+    const iconPath = path.join(__dirname, '../../assets/icon.png')
+    app.dock.setIcon(nativeImage.createFromPath(iconPath))
+    app.dock.show()
   }
 
   dashboardWindow.on('closed', () => {
-    dashboardWindow = null;
+    dashboardWindow = null
     // Hide dock icon when no windows are open
-    if (app.dock) app.dock.hide();
-  });
+    if (app.dock) app.dock.hide()
+  })
 
-  return dashboardWindow;
+  return dashboardWindow
 }
 
 function closeDashboardWindow() {
   if (dashboardWindow && !dashboardWindow.isDestroyed()) {
-    dashboardWindow.close();
+    dashboardWindow.close()
   }
 }
 
-module.exports = { createDashboardWindow, closeDashboardWindow };
+module.exports = { createDashboardWindow, closeDashboardWindow }

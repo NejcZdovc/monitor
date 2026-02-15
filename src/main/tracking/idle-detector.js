@@ -1,39 +1,39 @@
-const { powerMonitor } = require('electron');
+const { powerMonitor } = require('electron')
 
 class IdleDetector {
   constructor(onIdleStart, onIdleEnd) {
-    this.idleThreshold = 300; // 5 minutes in seconds
-    this.checkInterval = 15000;
-    this.isIdle = false;
-    this.idleStartedAt = null;
-    this.onIdleStart = onIdleStart;
-    this.onIdleEnd = onIdleEnd;
-    this.timer = null;
+    this.idleThreshold = 300 // 5 minutes in seconds
+    this.checkInterval = 15000
+    this.isIdle = false
+    this.idleStartedAt = null
+    this.onIdleStart = onIdleStart
+    this.onIdleEnd = onIdleEnd
+    this.timer = null
   }
 
   start() {
-    this.timer = setInterval(() => this._check(), this.checkInterval);
+    this.timer = setInterval(() => this._check(), this.checkInterval)
   }
 
   _check() {
-    const idleSeconds = powerMonitor.getSystemIdleTime();
+    const idleSeconds = powerMonitor.getSystemIdleTime()
 
     if (!this.isIdle && idleSeconds >= this.idleThreshold) {
-      this.isIdle = true;
-      this.idleStartedAt = Date.now() - (idleSeconds * 1000);
-      this.onIdleStart(this.idleStartedAt);
+      this.isIdle = true
+      this.idleStartedAt = Date.now() - idleSeconds * 1000
+      this.onIdleStart(this.idleStartedAt)
     } else if (this.isIdle && idleSeconds < 10) {
-      this.isIdle = false;
-      const endedAt = Date.now();
-      this.onIdleEnd(this.idleStartedAt, endedAt);
-      this.idleStartedAt = null;
+      this.isIdle = false
+      const endedAt = Date.now()
+      this.onIdleEnd(this.idleStartedAt, endedAt)
+      this.idleStartedAt = null
     }
   }
 
   stop() {
-    if (this.timer) clearInterval(this.timer);
-    this.timer = null;
+    if (this.timer) clearInterval(this.timer)
+    this.timer = null
   }
 }
 
-module.exports = { IdleDetector };
+module.exports = { IdleDetector }

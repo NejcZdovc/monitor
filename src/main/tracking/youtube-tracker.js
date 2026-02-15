@@ -1,7 +1,7 @@
-const { execFile } = require('child_process');
-const path = require('path');
-const fs = require('fs');
-const os = require('os');
+const { execFile } = require('node:child_process')
+const path = require('node:path')
+const fs = require('node:fs')
+const os = require('node:os')
 
 // AppleScript that scans ALL browser windows (not just focused) for YouTube tabs
 // playing audio. Chromium browsers append "Audio playing" to the window title
@@ -25,39 +25,39 @@ const APPLESCRIPT_CONTENT = [
   '    end if',
   '  end repeat',
   '  return ""',
-  'end tell'
-].join('\n');
+  'end tell',
+].join('\n')
 
-const SCRIPT_PATH = path.join(os.tmpdir(), 'monitor-youtube-check.scpt');
-fs.writeFileSync(SCRIPT_PATH, APPLESCRIPT_CONTENT, 'utf8');
+const SCRIPT_PATH = path.join(os.tmpdir(), 'monitor-youtube-check.scpt')
+fs.writeFileSync(SCRIPT_PATH, APPLESCRIPT_CONTENT, 'utf8')
 
 class YouTubeTracker {
   constructor(activityStore) {
-    this.activityStore = activityStore;
-    this.pollInterval = 30000; // 30s — AppleScript browser scan takes ~4s
-    this.timer = null;
-    this.currentSession = null;
-    this.checking = false;
+    this.activityStore = activityStore
+    this.pollInterval = 30000 // 30s — AppleScript browser scan takes ~4s
+    this.timer = null
+    this.currentSession = null
+    this.checking = false
   }
 
   start() {
-    this._poll();
-    this.timer = setInterval(() => this._poll(), this.pollInterval);
+    this._poll()
+    this.timer = setInterval(() => this._poll(), this.pollInterval)
   }
 
   _poll() {
     // Skip if previous check is still running
-    if (this.checking) return;
-    this.checking = true;
+    if (this.checking) return
+    this.checking = true
 
     execFile('osascript', [SCRIPT_PATH], { timeout: 8000 }, (err, stdout) => {
-      this.checking = false;
+      this.checking = false
       try {
-        const isPlaying = !err && stdout.trim() === 'PLAYING';
+        const isPlaying = !err && stdout.trim() === 'PLAYING'
 
         if (isPlaying && !this.currentSession) {
-          const now = Date.now();
-          this.currentSession = { startedAt: now };
+          const now = Date.now()
+          this.currentSession = { startedAt: now }
           this.currentSession.id = this.activityStore.insert({
             appName: 'YouTube',
             windowTitle: 'YouTube - Audio playing',
@@ -65,33 +65,33 @@ class YouTubeTracker {
             startedAt: now,
             endedAt: null,
             durationMs: null,
-            isIdle: false
-          });
+            isIdle: false,
+          })
         } else if (!isPlaying && this.currentSession) {
-          this._endSession();
+          this._endSession()
         }
-      } catch (e) {
+      } catch (_e) {
         // Silently ignore
       }
-    });
+    })
   }
 
   _endSession(endTime) {
-    if (!this.currentSession) return;
-    const now = endTime || Date.now();
-    this.activityStore.update(this.currentSession.id, now);
-    this.currentSession = null;
+    if (!this.currentSession) return
+    const now = endTime || Date.now()
+    this.activityStore.update(this.currentSession.id, now)
+    this.currentSession = null
   }
 
   isPlaying() {
-    return this.currentSession !== null;
+    return this.currentSession !== null
   }
 
   stop() {
-    if (this.timer) clearInterval(this.timer);
-    this.timer = null;
-    this._endSession();
+    if (this.timer) clearInterval(this.timer)
+    this.timer = null
+    this._endSession()
   }
 }
 
-module.exports = { YouTubeTracker };
+module.exports = { YouTubeTracker }

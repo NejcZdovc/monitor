@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer } = require('electron')
 
 contextBridge.exposeInMainWorld('monitor', {
   getSummary: (startMs, endMs) => ipcRenderer.invoke('get-summary', startMs, endMs),
@@ -12,5 +12,5 @@ contextBridge.exposeInMainWorld('monitor', {
   getYouTubeTime: (startMs, endMs) => ipcRenderer.invoke('get-youtube-time', startMs, endMs),
   getTrackingStatus: () => ipcRenderer.invoke('get-tracking-status'),
   toggleTracking: () => ipcRenderer.invoke('toggle-tracking'),
-  isDev: () => ipcRenderer.invoke('is-dev')
-});
+  isDev: () => ipcRenderer.invoke('is-dev'),
+})

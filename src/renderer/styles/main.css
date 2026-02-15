@@ -114,7 +114,7 @@ body {
   display: none;
 }
 
-.custom-range input[type="date"] {
+.custom-range input[type='date'] {
   padding: 5px 10px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -125,7 +125,7 @@ body {
   outline: none;
 }
 
-.custom-range input[type="date"]:focus {
+.custom-range input[type='date']:focus {
   border-color: var(--accent);
 }
 

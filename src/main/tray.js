@@ -1,32 +1,32 @@
-const { Tray, BrowserWindow, nativeImage, ipcMain, screen } = require('electron');
-const path = require('path');
+const { Tray, BrowserWindow, nativeImage, ipcMain, screen } = require('electron')
+const path = require('node:path')
 
-let tray = null;
-let popupWindow = null;
-let ipcRegistered = false;
+let tray = null
+let popupWindow = null
+let ipcRegistered = false
 
-const POPUP_WIDTH = 260;
-const POPUP_HEIGHT = 400;
+const POPUP_WIDTH = 260
+const POPUP_HEIGHT = 400
 
 function showPopup() {
   // Destroy and recreate every time for a clean state
   if (popupWindow && !popupWindow.isDestroyed()) {
-    popupWindow.destroy();
-    popupWindow = null;
+    popupWindow.destroy()
+    popupWindow = null
   }
 
-  const trayBounds = tray.getBounds();
-  const display = screen.getDisplayNearestPoint({ x: trayBounds.x, y: trayBounds.y });
+  const trayBounds = tray.getBounds()
+  const display = screen.getDisplayNearestPoint({ x: trayBounds.x, y: trayBounds.y })
 
-  let x = Math.round(trayBounds.x + trayBounds.width / 2 - POPUP_WIDTH / 2);
-  let y = Math.round(trayBounds.y + trayBounds.height + 4);
+  let x = Math.round(trayBounds.x + trayBounds.width / 2 - POPUP_WIDTH / 2)
+  const y = Math.round(trayBounds.y + trayBounds.height + 4)
 
-  const screenBounds = display.workArea;
+  const screenBounds = display.workArea
   if (x + POPUP_WIDTH > screenBounds.x + screenBounds.width) {
-    x = screenBounds.x + screenBounds.width - POPUP_WIDTH;
+    x = screenBounds.x + screenBounds.width - POPUP_WIDTH
   }
   if (x < screenBounds.x) {
-    x = screenBounds.x;
+    x = screenBounds.x
   }
 
   popupWindow = new BrowserWindow({
@@ -50,104 +50,104 @@ function showPopup() {
       preload: path.join(__dirname, '../renderer/tray-preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false
-    }
-  });
+      sandbox: false,
+    },
+  })
 
-  popupWindow.setAlwaysOnTop(true, 'pop-up-menu');
+  popupWindow.setAlwaysOnTop(true, 'pop-up-menu')
 
   popupWindow.on('blur', () => {
     if (popupWindow && !popupWindow.isDestroyed() && popupWindow.isVisible()) {
-      popupWindow.hide();
+      popupWindow.hide()
     }
-  });
+  })
 
   popupWindow.on('closed', () => {
-    popupWindow = null;
-  });
+    popupWindow = null
+  })
 
-  popupWindow.loadFile(path.join(__dirname, '../renderer/tray-popup.html'));
+  popupWindow.loadFile(path.join(__dirname, '../renderer/tray-popup.html'))
 
   popupWindow.webContents.once('did-finish-load', () => {
     if (popupWindow && !popupWindow.isDestroyed()) {
-      popupWindow.show();
-      popupWindow.focus();
+      popupWindow.show()
+      popupWindow.focus()
     }
-  });
+  })
 }
 
 function togglePopup() {
   if (popupWindow && !popupWindow.isDestroyed() && popupWindow.isVisible()) {
-    popupWindow.hide();
+    popupWindow.hide()
   } else {
-    showPopup();
+    showPopup()
   }
 }
 
 function createTray(trackerManager, queryEngine, openDashboard, closeDashboard) {
-  const iconPath = path.join(__dirname, '../../assets/iconTemplate.png');
-  const icon = nativeImage.createFromPath(iconPath);
-  tray = new Tray(icon);
-  tray.setToolTip('Monitor - Activity Tracker');
+  const iconPath = path.join(__dirname, '../../assets/iconTemplate.png')
+  const icon = nativeImage.createFromPath(iconPath)
+  tray = new Tray(icon)
+  tray.setToolTip('Monitor - Activity Tracker')
 
   tray.on('click', () => {
-    togglePopup();
-  });
+    togglePopup()
+  })
 
   tray.on('right-click', () => {
-    togglePopup();
-  });
+    togglePopup()
+  })
 
   if (!ipcRegistered) {
-    ipcRegistered = true;
+    ipcRegistered = true
 
     ipcMain.handle('tray-get-stats', () => {
-      const now = new Date();
-      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-      const end = start + 86400000;
+      const now = new Date()
+      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+      const end = start + 86400000
 
-      let summary, topApp;
+      let summary, topApp
       try {
-        summary = queryEngine.getSummaryTotals(start, end);
-        topApp = queryEngine.getTopApp(start, end);
-      } catch (err) {
-        summary = { activeTimeMs: 0, totalKeys: 0, totalClicks: 0, callTimeMs: 0, youtubeTimeMs: 0 };
-        topApp = null;
+        summary = queryEngine.getSummaryTotals(start, end)
+        topApp = queryEngine.getTopApp(start, end)
+      } catch (_err) {
+        summary = { activeTimeMs: 0, totalKeys: 0, totalClicks: 0, callTimeMs: 0, youtubeTimeMs: 0 }
+        topApp = null
       }
 
       return {
         ...summary,
         topApp,
-        isTracking: trackerManager.isTracking
-      };
-    });
+        isTracking: trackerManager.isTracking,
+      }
+    })
 
     ipcMain.on('tray-open-dashboard', () => {
-      if (popupWindow && !popupWindow.isDestroyed() && popupWindow.isVisible()) popupWindow.hide();
-      setImmediate(() => openDashboard());
-    });
+      if (popupWindow && !popupWindow.isDestroyed() && popupWindow.isVisible()) popupWindow.hide()
+      setImmediate(() => openDashboard())
+    })
 
     ipcMain.on('tray-close-dashboard', () => {
-      if (popupWindow && !popupWindow.isDestroyed() && popupWindow.isVisible()) popupWindow.hide();
-      closeDashboard();
-    });
+      if (popupWindow && !popupWindow.isDestroyed() && popupWindow.isVisible()) popupWindow.hide()
+      closeDashboard()
+    })
 
     ipcMain.handle('tray-toggle-tracking', () => {
       if (trackerManager.isTracking) {
-        trackerManager.stop();
+        trackerManager.stop()
       } else {
-        trackerManager.start();
+        trackerManager.start()
       }
-      return { isTracking: trackerManager.isTracking };
-    });
+      return { isTracking: trackerManager.isTracking }
+    })
 
     ipcMain.on('tray-quit', () => {
-      const { app } = require('electron');
-      app.quit();
-    });
+      const { app } = require('electron')
+      app.quit()
+    })
   }
 
-  return tray;
+  return tray
 }
 
-module.exports = { createTray };
+module.exports = { createTray }

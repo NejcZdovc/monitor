@@ -1,26 +1,26 @@
-const Database = require('better-sqlite3');
-const path = require('path');
-const { app } = require('electron');
+const Database = require('better-sqlite3')
+const path = require('node:path')
+const { app } = require('electron')
 
 class AppDatabase {
   constructor() {
-    const dbName = app.isPackaged ? 'monitor.db' : 'monitor-dev.db';
-    const dbPath = path.join(app.getPath('userData'), dbName);
-    this.db = new Database(dbPath);
-    this.db.pragma('journal_mode = WAL');
-    this.db.pragma('foreign_keys = ON');
-    this.migrate();
+    const dbName = app.isPackaged ? 'monitor.db' : 'monitor-dev.db'
+    const dbPath = path.join(app.getPath('userData'), dbName)
+    this.db = new Database(dbPath)
+    this.db.pragma('journal_mode = WAL')
+    this.db.pragma('foreign_keys = ON')
+    this.migrate()
   }
 
   migrate() {
-    this.db.exec('CREATE TABLE IF NOT EXISTS schema_version (version INTEGER PRIMARY KEY)');
-    const row = this.db.prepare('SELECT MAX(version) as v FROM schema_version').get();
-    const currentVersion = row?.v || 0;
+    this.db.exec('CREATE TABLE IF NOT EXISTS schema_version (version INTEGER PRIMARY KEY)')
+    const row = this.db.prepare('SELECT MAX(version) as v FROM schema_version').get()
+    const currentVersion = row?.v || 0
 
-    const migrations = [this._v1.bind(this)];
+    const migrations = [this._v1.bind(this)]
     for (let i = currentVersion; i < migrations.length; i++) {
-      migrations[i]();
-      this.db.prepare('INSERT INTO schema_version (version) VALUES (?)').run(i + 1);
+      migrations[i]()
+      this.db.prepare('INSERT INTO schema_version (version) VALUES (?)').run(i + 1)
     }
   }
 
@@ -70,7 +70,7 @@ class AppDatabase {
         category_breakdown TEXT DEFAULT '{}'
       );
       CREATE UNIQUE INDEX idx_summary_date ON daily_summaries(date);
-    `);
+    `)
   }
 
   /**
@@ -79,33 +79,37 @@ class AppDatabase {
    * as a reasonable estimate for the last poll interval.
    */
   cleanupOrphanedSessions() {
-    const now = Date.now();
+    const now = Date.now()
     // Close orphaned activity sessions: set ended_at to started_at + 5000ms (one poll interval)
-    const activityResult = this.db.prepare(`
+    const activityResult = this.db
+      .prepare(`
       UPDATE activity_sessions
       SET ended_at = started_at + 5000, duration_ms = 5000
       WHERE ended_at IS NULL AND started_at < ?
-    `).run(now - 30000); // Only fix sessions older than 30s (current session may be legitimately open)
+    `)
+      .run(now - 30000) // Only fix sessions older than 30s (current session may be legitimately open)
 
     if (activityResult.changes > 0) {
-      console.log(`Cleaned up ${activityResult.changes} orphaned activity sessions`);
+      console.log(`Cleaned up ${activityResult.changes} orphaned activity sessions`)
     }
 
     // Close orphaned call sessions similarly
-    const callResult = this.db.prepare(`
+    const callResult = this.db
+      .prepare(`
       UPDATE call_sessions
       SET ended_at = started_at + 5000, duration_ms = 5000
       WHERE ended_at IS NULL AND started_at < ?
-    `).run(now - 30000);
+    `)
+      .run(now - 30000)
 
     if (callResult.changes > 0) {
-      console.log(`Cleaned up ${callResult.changes} orphaned call sessions`);
+      console.log(`Cleaned up ${callResult.changes} orphaned call sessions`)
     }
   }
 
   close() {
-    this.db.close();
+    this.db.close()
   }
 }
 
-module.exports = { AppDatabase };
+module.exports = { AppDatabase }

@@ -1,10 +1,17 @@
 <!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;">
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;"
+    >
+    <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
       background: #1e1e1e;
@@ -53,8 +60,12 @@
       height: 6px;
       border-radius: 50%;
     }
-    .tracking-badge.active .tracking-dot { background: #4ec9b0; }
-    .tracking-badge.paused .tracking-dot { background: #dcdcaa; }
+    .tracking-badge.active .tracking-dot {
+      background: #4ec9b0;
+    }
+    .tracking-badge.paused .tracking-dot {
+      background: #dcdcaa;
+    }
 
     .stats-grid {
       display: grid;
@@ -78,12 +89,24 @@
       font-weight: 600;
       font-variant-numeric: tabular-nums;
     }
-    .stat-item.active-time .stat-value { color: #569cd6; }
-    .stat-item.keystrokes .stat-value { color: #4ec9b0; }
-    .stat-item.clicks .stat-value { color: #4fc1ff; }
-    .stat-item.calls .stat-value { color: #ce9178; }
-    .stat-item.youtube .stat-value { color: #f44747; }
-    .stat-item.top-app .stat-value { color: #c586c0; }
+    .stat-item.active-time .stat-value {
+      color: #569cd6;
+    }
+    .stat-item.keystrokes .stat-value {
+      color: #4ec9b0;
+    }
+    .stat-item.clicks .stat-value {
+      color: #4fc1ff;
+    }
+    .stat-item.calls .stat-value {
+      color: #ce9178;
+    }
+    .stat-item.youtube .stat-value {
+      color: #f44747;
+    }
+    .stat-item.top-app .stat-value {
+      color: #c586c0;
+    }
 
     .stat-item.top-app {
       grid-column: 1 / -1;
@@ -134,60 +157,94 @@
     .action-btn.quit {
       color: #858585;
     }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <span class="title">Today's Stats</span>
-      <div class="tracking-badge active" id="trackingBadge">
-        <span class="tracking-dot"></span>
-        <span id="trackingLabel">Tracking</span>
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <span class="title">Today's Stats</span>
+        <div class="tracking-badge active" id="trackingBadge">
+          <span class="tracking-dot"></span>
+          <span id="trackingLabel">Tracking</span>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-item active-time">
+          <span class="stat-label">Active Time</span>
+          <span class="stat-value" id="activeTime">0m</span>
+        </div>
+        <div class="stat-item keystrokes">
+          <span class="stat-label">Keystrokes</span>
+          <span class="stat-value" id="keystrokes">0</span>
+        </div>
+        <div class="stat-item clicks">
+          <span class="stat-label">Mouse Clicks</span>
+          <span class="stat-value" id="clicks">0</span>
+        </div>
+        <div class="stat-item calls">
+          <span class="stat-label">Call Time</span>
+          <span class="stat-value" id="callTime">0m</span>
+        </div>
+        <div class="stat-item youtube">
+          <span class="stat-label">YouTube</span>
+          <span class="stat-value" id="youtube">0m</span>
+        </div>
+        <div class="stat-item top-app">
+          <span class="stat-label">Top App</span>
+          <span class="stat-value" id="topApp">None</span>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="actions">
+        <button type="button" class="action-btn" id="dashboardBtn">
+          <span class="icon"
+            ><svg
+              aria-hidden="true"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            >
+              <rect x="1" y="1" width="6" height="6" rx="1" />
+              <rect x="9" y="1" width="6" height="6" rx="1" />
+              <rect x="1" y="9" width="6" height="6" rx="1" />
+              <rect x="9" y="9" width="6" height="6" rx="1" />
+            </svg></span
+          >
+          Open Dashboard
+        </button>
+        <button type="button" class="action-btn" id="toggleBtn">
+          <span class="icon"
+            ><svg aria-hidden="true" viewBox="0 0 16 16" fill="currentColor">
+              <rect x="3" y="2" width="3.5" height="12" rx="1" />
+              <rect x="9.5" y="2" width="3.5" height="12" rx="1" />
+            </svg></span
+          >
+          Pause Tracking
+        </button>
+        <button type="button" class="action-btn quit" id="quitBtn">
+          <span class="icon"
+            ><svg
+              aria-hidden="true"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            >
+              <line x1="3" y1="3" x2="13" y2="13" />
+              <line x1="13" y1="3" x2="3" y2="13" />
+            </svg></span
+          >
+          Quit App
+        </button>
       </div>
     </div>
 
-    <div class="stats-grid">
-      <div class="stat-item active-time">
-        <span class="stat-label">Active Time</span>
-        <span class="stat-value" id="activeTime">0m</span>
-      </div>
-      <div class="stat-item keystrokes">
-        <span class="stat-label">Keystrokes</span>
-        <span class="stat-value" id="keystrokes">0</span>
-      </div>
-      <div class="stat-item clicks">
-        <span class="stat-label">Mouse Clicks</span>
-        <span class="stat-value" id="clicks">0</span>
-      </div>
-      <div class="stat-item calls">
-        <span class="stat-label">Call Time</span>
-        <span class="stat-value" id="callTime">0m</span>
-      </div>
-      <div class="stat-item youtube">
-        <span class="stat-label">YouTube</span>
-        <span class="stat-value" id="youtube">0m</span>
-      </div>
-      <div class="stat-item top-app">
-        <span class="stat-label">Top App</span>
-        <span class="stat-value" id="topApp">None</span>
-      </div>
-    </div>
-
-    <div class="divider"></div>
-
-    <div class="actions">
-      <button class="action-btn" id="dashboardBtn">
-        <span class="icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg></span> Open Dashboard
-      </button>
-      <button class="action-btn" id="toggleBtn">
-        <span class="icon"><svg viewBox="0 0 16 16" fill="currentColor"><rect x="3" y="2" width="3.5" height="12" rx="1"/><rect x="9.5" y="2" width="3.5" height="12" rx="1"/></svg></span> Pause Tracking
-      </button>
-      <button class="action-btn quit" id="quitBtn">
-        <span class="icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg></span> Quit App
-      </button>
-    </div>
-  </div>
-
-  <script src="./js/tray-popup.js"></script>
-</body>
+    <script src="./js/tray-popup.js"></script>
+  </body>
 </html>
