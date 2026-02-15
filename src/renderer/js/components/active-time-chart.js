@@ -5,7 +5,7 @@ class ActiveTimeChart {
   }
 
   async render(startMs, endMs, rangeType) {
-    let data, labels, activeData, idleData;
+    let data, labels, activeData;
 
     const useMinutes = rangeType === 'today';
     const convert = useMinutes ? (ms) => ms / 60000 : msToHours;
@@ -19,7 +19,6 @@ class ActiveTimeChart {
     }
 
     activeData = data.map(d => convert(d.active_ms));
-    idleData = data.map(d => convert(d.idle_ms));
 
     if (this.chart) this.chart.destroy();
     this.chart = null;
@@ -30,28 +29,24 @@ class ActiveTimeChart {
     }
     hideEmptyState(this.canvas);
 
-    // Plugin to draw active time values above each stacked bar
+    // Plugin to draw active time values above each bar
     const barValuePlugin = {
       id: 'barValues',
       afterDatasetsDraw(chart) {
         const { ctx } = chart;
-        const idleMeta = chart.getDatasetMeta(1); // Idle is on top of the stack
-        const activeMeta = chart.getDatasetMeta(0);
+        const meta = chart.getDatasetMeta(0);
         ctx.save();
         ctx.font = '10px -apple-system, BlinkMacSystemFont, sans-serif';
         ctx.fillStyle = '#d4d4d4';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
 
-        activeMeta.data.forEach((bar, i) => {
+        meta.data.forEach((bar, i) => {
           const value = activeData[i];
           if (value <= 0) return;
           const ms = useMinutes ? value * 60000 : value * 3600000;
           const label = formatDuration(ms);
-          // Draw above the top of the full stacked bar (idle is on top)
-          const topBar = idleMeta.data[i];
-          const topY = topBar && idleData[i] > 0 ? topBar.y : bar.y;
-          ctx.fillText(label, bar.x, topY - 4);
+          ctx.fillText(label, bar.x, bar.y - 4);
         });
         ctx.restore();
       }
@@ -68,13 +63,6 @@ class ActiveTimeChart {
             backgroundColor: '#569cd6',
             borderRadius: 4,
             borderSkipped: false
-          },
-          {
-            label: 'Idle',
-            data: idleData,
-            backgroundColor: 'rgba(255,255,255,0.06)',
-            borderRadius: 4,
-            borderSkipped: false
           }
         ]
       },
@@ -86,12 +74,10 @@ class ActiveTimeChart {
         },
         scales: {
           x: {
-            stacked: true,
             grid: { color: 'rgba(255,255,255,0.04)' },
             ticks: { color: '#858585', font: { size: 11 } }
           },
           y: {
-            stacked: true,
             beginAtZero: true,
             title: { display: true, text: useMinutes ? 'Minutes' : 'Hours', color: '#858585' },
             grid: { color: 'rgba(255,255,255,0.04)' },
@@ -99,12 +85,12 @@ class ActiveTimeChart {
           }
         },
         plugins: {
-          legend: { labels: { color: '#d4d4d4', boxWidth: 12, padding: 16 } },
+          legend: { display: false },
           tooltip: {
             callbacks: {
               label: (ctx) => {
                 const ms = useMinutes ? ctx.raw * 60000 : ctx.raw * 3600000;
-                return `${ctx.dataset.label}: ${formatDuration(ms)}`;
+                return `Active: ${formatDuration(ms)}`;
               }
             }
           }
