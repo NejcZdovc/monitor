@@ -16,12 +16,18 @@ class Dashboard {
     this.trackingBtn.addEventListener('click', () => this.toggleTracking());
     this._updateTrackingStatus();
 
+    // Show dev badge in header
+    this._showDevBadge();
+
     // Load initial data
     this.onRangeChange(DateUtils.getToday());
 
-    // Auto-refresh every 30 seconds
+    // Auto-refresh every 30 seconds, recalculating dynamic ranges on date change
     this._currentRange = DateUtils.getToday();
-    setInterval(() => this.onRangeChange(this._currentRange), 30000);
+    setInterval(() => {
+      const range = this._getFreshRange();
+      this.onRangeChange(range);
+    }, 30000);
   }
 
   async toggleTracking() {
@@ -42,6 +48,27 @@ class Dashboard {
       this.trackingDot.classList.add('paused');
       this.trackingLabel.textContent = 'Paused';
     }
+  }
+
+  async _showDevBadge() {
+    const isDev = await window.monitor.isDev();
+    if (isDev) {
+      const title = document.querySelector('.header-title');
+      if (title) {
+        const badge = document.createElement('span');
+        badge.className = 'dev-badge';
+        badge.textContent = 'DEV';
+        title.appendChild(badge);
+      }
+    }
+  }
+
+  _getFreshRange() {
+    const type = this._currentRange.type;
+    if (type === 'today') return DateUtils.getToday();
+    if (type === 'week') return DateUtils.getThisWeek();
+    if (type === 'month') return DateUtils.getThisMonth();
+    return this._currentRange;
   }
 
   async onRangeChange(range) {

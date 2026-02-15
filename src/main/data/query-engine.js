@@ -4,15 +4,20 @@ class QueryEngine {
   }
 
   getSummaryTotals(startMs, endMs) {
+    // Use clamped duration: only count the portion of each session that falls within [startMs, endMs)
     const active = this.db.prepare(`
-      SELECT COALESCE(SUM(duration_ms), 0) as total FROM activity_sessions
-      WHERE started_at >= ? AND (ended_at <= ? OR ended_at IS NULL) AND is_idle = 0
-    `).get(startMs, endMs);
+      SELECT COALESCE(SUM(
+        MIN(COALESCE(ended_at, ?), ?) - MAX(started_at, ?)
+      ), 0) as total FROM activity_sessions
+      WHERE started_at < ? AND (ended_at > ? OR ended_at IS NULL) AND is_idle = 0
+    `).get(endMs, endMs, startMs, endMs, startMs);
 
     const idle = this.db.prepare(`
-      SELECT COALESCE(SUM(duration_ms), 0) as total FROM activity_sessions
-      WHERE started_at >= ? AND (ended_at <= ? OR ended_at IS NULL) AND is_idle = 1
-    `).get(startMs, endMs);
+      SELECT COALESCE(SUM(
+        MIN(COALESCE(ended_at, ?), ?) - MAX(started_at, ?)
+      ), 0) as total FROM activity_sessions
+      WHERE started_at < ? AND (ended_at > ? OR ended_at IS NULL) AND is_idle = 1
+    `).get(endMs, endMs, startMs, endMs, startMs);
 
     const input = this.db.prepare(`
       SELECT COALESCE(SUM(key_count), 0) as keys, COALESCE(SUM(click_count), 0) as clicks
@@ -20,15 +25,19 @@ class QueryEngine {
     `).get(startMs, endMs);
 
     const calls = this.db.prepare(`
-      SELECT COALESCE(SUM(duration_ms), 0) as total FROM call_sessions
-      WHERE started_at >= ? AND (ended_at <= ? OR ended_at IS NULL)
-    `).get(startMs, endMs);
+      SELECT COALESCE(SUM(
+        MIN(COALESCE(ended_at, ?), ?) - MAX(started_at, ?)
+      ), 0) as total FROM call_sessions
+      WHERE started_at < ? AND (ended_at > ? OR ended_at IS NULL)
+    `).get(endMs, endMs, startMs, endMs, startMs);
 
     const youtube = this.db.prepare(`
-      SELECT COALESCE(SUM(duration_ms), 0) as total FROM activity_sessions
-      WHERE started_at >= ? AND (ended_at <= ? OR ended_at IS NULL)
+      SELECT COALESCE(SUM(
+        MIN(COALESCE(ended_at, ?), ?) - MAX(started_at, ?)
+      ), 0) as total FROM activity_sessions
+      WHERE started_at < ? AND (ended_at > ? OR ended_at IS NULL)
         AND app_name = 'YouTube' AND is_idle = 0
-    `).get(startMs, endMs);
+    `).get(endMs, endMs, startMs, endMs, startMs);
 
     return {
       activeTimeMs: active.total,
@@ -41,29 +50,30 @@ class QueryEngine {
   }
 
   getHourlyActivity(startMs, endMs) {
+    // Clamp each session to [startMs, endMs) and bucket by its start hour
     return this.db.prepare(`
       SELECT
-        CAST(started_at / 3600000 AS INTEGER) * 3600000 as hour,
-        SUM(CASE WHEN is_idle = 0 THEN duration_ms ELSE 0 END) as active_ms,
-        SUM(CASE WHEN is_idle = 1 THEN duration_ms ELSE 0 END) as idle_ms
+        CAST(MAX(started_at, ?) / 3600000 AS INTEGER) * 3600000 as hour,
+        SUM(CASE WHEN is_idle = 0 THEN MIN(COALESCE(ended_at, ?), ?) - MAX(started_at, ?) ELSE 0 END) as active_ms,
+        SUM(CASE WHEN is_idle = 1 THEN MIN(COALESCE(ended_at, ?), ?) - MAX(started_at, ?) ELSE 0 END) as idle_ms
       FROM activity_sessions
-      WHERE started_at >= ? AND (ended_at <= ? OR ended_at IS NULL)
+      WHERE started_at < ? AND (ended_at > ? OR ended_at IS NULL)
       GROUP BY hour
       ORDER BY hour ASC
-    `).all(startMs, endMs);
+    `).all(startMs, endMs, endMs, startMs, endMs, endMs, startMs, endMs, startMs);
   }
 
   getDailyActivity(startMs, endMs) {
     return this.db.prepare(`
       SELECT
-        strftime('%Y-%m-%d', started_at / 1000, 'unixepoch', 'localtime') as date,
-        SUM(CASE WHEN is_idle = 0 THEN duration_ms ELSE 0 END) as active_ms,
-        SUM(CASE WHEN is_idle = 1 THEN duration_ms ELSE 0 END) as idle_ms
+        strftime('%Y-%m-%d', MAX(started_at, ?) / 1000, 'unixepoch', 'localtime') as date,
+        SUM(CASE WHEN is_idle = 0 THEN MIN(COALESCE(ended_at, ?), ?) - MAX(started_at, ?) ELSE 0 END) as active_ms,
+        SUM(CASE WHEN is_idle = 1 THEN MIN(COALESCE(ended_at, ?), ?) - MAX(started_at, ?) ELSE 0 END) as idle_ms
       FROM activity_sessions
-      WHERE started_at >= ? AND (ended_at <= ? OR ended_at IS NULL)
+      WHERE started_at < ? AND (ended_at > ? OR ended_at IS NULL)
       GROUP BY date
       ORDER BY date ASC
-    `).all(startMs, endMs);
+    `).all(startMs, endMs, endMs, startMs, endMs, endMs, startMs, endMs, startMs);
   }
 
   getInputActivity(startMs, endMs) {
@@ -77,70 +87,70 @@ class QueryEngine {
 
   getCategoryBreakdown(startMs, endMs) {
     return this.db.prepare(`
-      SELECT category, SUM(duration_ms) as total_ms
+      SELECT category, SUM(MIN(COALESCE(ended_at, ?), ?) - MAX(started_at, ?)) as total_ms
       FROM activity_sessions
-      WHERE started_at >= ? AND (ended_at <= ? OR ended_at IS NULL) AND is_idle = 0
+      WHERE started_at < ? AND (ended_at > ? OR ended_at IS NULL) AND is_idle = 0
       GROUP BY category
       ORDER BY total_ms DESC
-    `).all(startMs, endMs);
+    `).all(endMs, endMs, startMs, endMs, startMs);
   }
 
   getAppBreakdown(startMs, endMs) {
     return this.db.prepare(`
-      SELECT app_name, category, SUM(duration_ms) as total_ms
+      SELECT app_name, category, SUM(MIN(COALESCE(ended_at, ?), ?) - MAX(started_at, ?)) as total_ms
       FROM activity_sessions
-      WHERE started_at >= ? AND (ended_at <= ? OR ended_at IS NULL) AND is_idle = 0
+      WHERE started_at < ? AND (ended_at > ? OR ended_at IS NULL) AND is_idle = 0
       GROUP BY app_name
       ORDER BY total_ms DESC
       LIMIT 20
-    `).all(startMs, endMs);
+    `).all(endMs, endMs, startMs, endMs, startMs);
   }
 
   getAppsByCategory(category, startMs, endMs) {
     return this.db.prepare(`
-      SELECT app_name, category, SUM(duration_ms) as total_ms
+      SELECT app_name, category, SUM(MIN(COALESCE(ended_at, ?), ?) - MAX(started_at, ?)) as total_ms
       FROM activity_sessions
-      WHERE category = ? AND started_at >= ? AND (ended_at <= ? OR ended_at IS NULL) AND is_idle = 0
+      WHERE category = ? AND started_at < ? AND (ended_at > ? OR ended_at IS NULL) AND is_idle = 0
       GROUP BY app_name
       ORDER BY total_ms DESC
-    `).all(category, startMs, endMs);
+    `).all(endMs, endMs, startMs, category, endMs, startMs);
   }
 
   getTopApp(startMs, endMs) {
     return this.db.prepare(`
-      SELECT app_name, SUM(duration_ms) as total_ms
+      SELECT app_name, SUM(MIN(COALESCE(ended_at, ?), ?) - MAX(started_at, ?)) as total_ms
       FROM activity_sessions
-      WHERE started_at >= ? AND (ended_at <= ? OR ended_at IS NULL) AND is_idle = 0
+      WHERE started_at < ? AND (ended_at > ? OR ended_at IS NULL) AND is_idle = 0
       GROUP BY app_name
       ORDER BY total_ms DESC
       LIMIT 1
-    `).get(startMs, endMs);
+    `).get(endMs, endMs, startMs, endMs, startMs);
   }
 
   getCallTimeByDay(startMs, endMs) {
     return this.db.prepare(`
       SELECT
         app_name,
-        strftime('%Y-%m-%d', started_at / 1000, 'unixepoch', 'localtime') as date,
-        SUM(duration_ms) as total_ms
+        strftime('%Y-%m-%d', MAX(started_at, ?) / 1000, 'unixepoch', 'localtime') as date,
+        SUM(MIN(COALESCE(ended_at, ?), ?) - MAX(started_at, ?)) as total_ms
       FROM call_sessions
-      WHERE started_at >= ? AND (ended_at <= ? OR ended_at IS NULL)
+      WHERE started_at < ? AND (ended_at > ? OR ended_at IS NULL)
       GROUP BY date, app_name
       ORDER BY date ASC
-    `).all(startMs, endMs);
+    `).all(startMs, endMs, endMs, startMs, endMs, startMs);
   }
 
   getYouTubeTimeByDay(startMs, endMs) {
     return this.db.prepare(`
       SELECT
-        strftime('%Y-%m-%d', started_at / 1000, 'unixepoch', 'localtime') as date,
-        SUM(duration_ms) as total_ms
+        strftime('%Y-%m-%d', MAX(started_at, ?) / 1000, 'unixepoch', 'localtime') as date,
+        SUM(MIN(COALESCE(ended_at, ?), ?) - MAX(started_at, ?)) as total_ms
       FROM activity_sessions
-      WHERE started_at >= ? AND (ended_at <= ? OR ended_at IS NULL)
+      WHERE started_at < ? AND (ended_at > ? OR ended_at IS NULL)
         AND app_name = 'YouTube' AND is_idle = 0
       GROUP BY date
       ORDER BY date ASC
-    `).all(startMs, endMs);
+    `).all(startMs, endMs, endMs, startMs, endMs, startMs);
   }
 }
 

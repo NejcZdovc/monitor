@@ -53,7 +53,13 @@ class WindowTracker {
     if (this.paused || this.polling) return;
     this.polling = true;
 
+    // Safety timeout: ensure polling flag is reset even if execFile callback never fires
+    const safetyTimer = setTimeout(() => {
+      this.polling = false;
+    }, 5000);
+
     execFile('osascript', [SCRIPT_PATH], { timeout: 3000 }, (err, stdout) => {
+      clearTimeout(safetyTimer);
       this.polling = false;
       if (this.paused) return;
 
@@ -166,6 +172,8 @@ class WindowTracker {
 
   resume() {
     this.paused = false;
+    this.polling = false; // Reset in case a timed-out poll left this stuck
+    this._poll(); // Immediately poll to start tracking right away
   }
 
   hasActiveGoogleMeet() {

@@ -1,6 +1,10 @@
-const { ipcMain } = require('electron');
+const { ipcMain, app } = require('electron');
 
 function registerIpcHandlers(queryEngine, trackerManager) {
+  ipcMain.handle('is-dev', () => {
+    return !app.isPackaged;
+  });
+
   ipcMain.handle('get-summary', (event, startMs, endMs) => {
     return queryEngine.getSummaryTotals(startMs, endMs);
   });

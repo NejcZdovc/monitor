@@ -11,5 +11,6 @@ contextBridge.exposeInMainWorld('monitor', {
   getCallTime: (startMs, endMs) => ipcRenderer.invoke('get-call-time', startMs, endMs),
   getYouTubeTime: (startMs, endMs) => ipcRenderer.invoke('get-youtube-time', startMs, endMs),
   getTrackingStatus: () => ipcRenderer.invoke('get-tracking-status'),
-  toggleTracking: () => ipcRenderer.invoke('toggle-tracking')
+  toggleTracking: () => ipcRenderer.invoke('toggle-tracking'),
+  isDev: () => ipcRenderer.invoke('is-dev')
 });

@@ -19,11 +19,13 @@ if (app.dock) {
   app.dock.hide();
 }
 
-// Auto-update (checks every hour, notifies user when update is available)
-updateElectronApp({
-  updateInterval: '1 hour',
-  notifyUser: true
-});
+// Auto-update only in packaged builds
+if (app.isPackaged) {
+  updateElectronApp({
+    updateInterval: '1 hour',
+    notifyUser: true
+  });
+}
 
 let database, trackerManager, queryEngine, tray;
 
@@ -43,6 +45,7 @@ app.whenReady().then(async () => {
 
   // Initialize database
   database = new AppDatabase();
+  database.cleanupOrphanedSessions();
   queryEngine = new QueryEngine(database.db);
 
   // Initialize tracker

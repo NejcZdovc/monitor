@@ -73,6 +73,36 @@ class AppDatabase {
     `);
   }
 
+  /**
+   * Close any orphaned sessions (ended_at IS NULL) that were left open
+   * from a previous run (e.g., app crash). Sets ended_at to started_at + 5s
+   * as a reasonable estimate for the last poll interval.
+   */
+  cleanupOrphanedSessions() {
+    const now = Date.now();
+    // Close orphaned activity sessions: set ended_at to started_at + 5000ms (one poll interval)
+    const activityResult = this.db.prepare(`
+      UPDATE activity_sessions
+      SET ended_at = started_at + 5000, duration_ms = 5000
+      WHERE ended_at IS NULL AND started_at < ?
+    `).run(now - 30000); // Only fix sessions older than 30s (current session may be legitimately open)
+
+    if (activityResult.changes > 0) {
+      console.log(`Cleaned up ${activityResult.changes} orphaned activity sessions`);
+    }
+
+    // Close orphaned call sessions similarly
+    const callResult = this.db.prepare(`
+      UPDATE call_sessions
+      SET ended_at = started_at + 5000, duration_ms = 5000
+      WHERE ended_at IS NULL AND started_at < ?
+    `).run(now - 30000);
+
+    if (callResult.changes > 0) {
+      console.log(`Cleaned up ${callResult.changes} orphaned call sessions`);
+    }
+  }
+
   close() {
     this.db.close();
   }

@@ -24,8 +24,12 @@ class ActivityStore {
   }
 
   update(id, endedAt) {
-    const durationMs = endedAt - this.db.prepare('SELECT started_at FROM activity_sessions WHERE id = ?').get(id)?.started_at;
-    this._updateStmt.run({ id, endedAt, durationMs });
+    const row = this.db.prepare('SELECT started_at FROM activity_sessions WHERE id = ?').get(id);
+    if (!row) return;
+    // If endedAt is before startedAt (e.g., backdated idle), clamp to startedAt
+    const clampedEndedAt = Math.max(endedAt, row.started_at);
+    const durationMs = clampedEndedAt - row.started_at;
+    this._updateStmt.run({ id, endedAt: clampedEndedAt, durationMs });
   }
 }
 
