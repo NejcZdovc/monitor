@@ -1,7 +1,7 @@
 {
   "name": "monitor",
   "productName": "Monitor",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "macOS activity tracker for tracking computer usage",
   "main": "src/main/main.js",
   "repository": {
