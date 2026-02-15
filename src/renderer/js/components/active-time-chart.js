@@ -30,6 +30,33 @@ class ActiveTimeChart {
     }
     hideEmptyState(this.canvas);
 
+    // Plugin to draw active time values above each stacked bar
+    const barValuePlugin = {
+      id: 'barValues',
+      afterDatasetsDraw(chart) {
+        const { ctx } = chart;
+        const idleMeta = chart.getDatasetMeta(1); // Idle is on top of the stack
+        const activeMeta = chart.getDatasetMeta(0);
+        ctx.save();
+        ctx.font = '10px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillStyle = '#d4d4d4';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+
+        activeMeta.data.forEach((bar, i) => {
+          const value = activeData[i];
+          if (value <= 0) return;
+          const ms = useMinutes ? value * 60000 : value * 3600000;
+          const label = formatDuration(ms);
+          // Draw above the top of the full stacked bar (idle is on top)
+          const topBar = idleMeta.data[i];
+          const topY = topBar && idleData[i] > 0 ? topBar.y : bar.y;
+          ctx.fillText(label, bar.x, topY - 4);
+        });
+        ctx.restore();
+      }
+    };
+
     this.chart = new Chart(this.canvas, {
       type: 'bar',
       data: {
@@ -54,6 +81,9 @@ class ActiveTimeChart {
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        layout: {
+          padding: { top: 20 }
+        },
         scales: {
           x: {
             stacked: true,
@@ -79,7 +109,8 @@ class ActiveTimeChart {
             }
           }
         }
-      }
+      },
+      plugins: [barValuePlugin]
     });
   }
 }

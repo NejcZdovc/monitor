@@ -16,31 +16,75 @@ class InputChart {
     }
     hideEmptyState(this.canvas);
 
+    // Bucket data by hour (today) or by day (other ranges)
+    const useHourly = rangeType === 'today';
+    const buckets = new Map();
+
+    for (const d of data) {
+      const date = new Date(d.recorded_at);
+      let key;
+      if (useHourly) {
+        key = new Date(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours()).getTime();
+      } else {
+        key = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+      }
+      if (!buckets.has(key)) {
+        buckets.set(key, { keys: 0, clicks: 0 });
+      }
+      const bucket = buckets.get(key);
+      bucket.keys += d.key_count;
+      bucket.clicks += d.click_count;
+    }
+
+    // Generate all time slots between start and end, filling gaps with 0
+    const allSlots = [];
+    const slotStart = new Date(startMs);
+    let cursor;
+    if (useHourly) {
+      cursor = new Date(slotStart.getFullYear(), slotStart.getMonth(), slotStart.getDate(), slotStart.getHours());
+    } else {
+      cursor = new Date(slotStart.getFullYear(), slotStart.getMonth(), slotStart.getDate());
+    }
+
+    const now = Date.now();
+    const slotEnd = Math.min(endMs, now); // Don't generate future slots
+
+    while (cursor.getTime() <= slotEnd) {
+      allSlots.push(cursor.getTime());
+      if (useHourly) {
+        cursor = new Date(cursor.getTime() + 3600000); // +1 hour
+      } else {
+        cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() + 1); // +1 day
+      }
+    }
+
+    const labels = allSlots.map(k => new Date(k));
+    const keyData = allSlots.map(k => buckets.has(k) ? buckets.get(k).keys : 0);
+    const clickData = allSlots.map(k => buckets.has(k) ? buckets.get(k).clicks : 0);
+
     this.chart = new Chart(this.canvas, {
       type: 'line',
       data: {
-        labels: data.map(d => new Date(d.recorded_at)),
+        labels,
         datasets: [
           {
             label: 'Keystrokes',
-            data: data.map(d => d.key_count),
-            borderColor: '#569cd6',
+            data: keyData,
+            borderColor: 'rgba(86,156,214,0.9)',
             backgroundColor: 'rgba(86,156,214,0.1)',
             fill: true,
             tension: 0.3,
             pointRadius: 0,
-            pointHitRadius: 10,
             borderWidth: 2
           },
           {
             label: 'Clicks',
-            data: data.map(d => d.click_count),
-            borderColor: '#4ec9b0',
+            data: clickData,
+            borderColor: 'rgba(78,201,176,0.9)',
             backgroundColor: 'rgba(78,201,176,0.1)',
             fill: true,
             tension: 0.3,
             pointRadius: 0,
-            pointHitRadius: 10,
             borderWidth: 2
           }
         ]
@@ -53,7 +97,7 @@ class InputChart {
           x: {
             type: 'time',
             time: {
-              unit: rangeType === 'today' ? 'hour' : 'day',
+              unit: useHourly ? 'hour' : 'day',
               displayFormats: {
                 hour: 'ha',
                 day: 'MMM d'
@@ -64,7 +108,7 @@ class InputChart {
           },
           y: {
             beginAtZero: true,
-            title: { display: true, text: 'Count / min', color: '#858585' },
+            title: { display: true, text: 'Count', color: '#858585' },
             grid: { color: 'rgba(255,255,255,0.04)' },
             ticks: { color: '#858585', font: { size: 11 } }
           }
@@ -75,7 +119,10 @@ class InputChart {
             callbacks: {
               title: (items) => {
                 const d = new Date(items[0].parsed.x);
-                return d.toLocaleString();
+                if (useHourly) {
+                  return d.toLocaleString(undefined, { hour: 'numeric', minute: '2-digit' });
+                }
+                return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
               }
             }
           }
