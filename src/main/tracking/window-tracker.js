@@ -73,6 +73,9 @@ class WindowTracker {
         const windowTitle = result.substring(sep + 3);
         if (!appName) return;
 
+        // Skip tracking the Monitor app itself (viewing dashboard shouldn't count as usage)
+        if (appName === 'Monitor' || appName === 'Electron') return;
+
         const category = resolveCategory(appName, windowTitle);
 
         // Track Google Meet and FaceTime as calls

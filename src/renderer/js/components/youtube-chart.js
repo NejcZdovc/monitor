@@ -16,13 +16,17 @@ class YouTubeChart {
     }
     hideEmptyState(this.canvas);
 
+    const maxMs = Math.max(...data.map(d => d.total_ms));
+    const useMinutes = maxMs < 7200000; // 120 minutes
+    const convert = useMinutes ? (ms) => ms / 60000 : msToHours;
+
     this.chart = new Chart(this.canvas, {
       type: 'bar',
       data: {
         labels: data.map(d => DateUtils.formatDateLabel(d.date)),
         datasets: [{
           label: 'YouTube',
-          data: data.map(d => msToHours(d.total_ms)),
+          data: data.map(d => convert(d.total_ms)),
           backgroundColor: '#d16969',
           borderRadius: 4,
           borderSkipped: false
@@ -38,7 +42,7 @@ class YouTubeChart {
           },
           y: {
             beginAtZero: true,
-            title: { display: true, text: 'Hours', color: '#858585' },
+            title: { display: true, text: useMinutes ? 'Minutes' : 'Hours', color: '#858585' },
             grid: { color: 'rgba(255,255,255,0.04)' },
             ticks: { color: '#858585', font: { size: 11 } }
           }
@@ -47,7 +51,10 @@ class YouTubeChart {
           legend: { display: false },
           tooltip: {
             callbacks: {
-              label: (ctx) => `YouTube: ${formatDuration(ctx.raw * 3600000)}`
+              label: (ctx) => {
+                const ms = useMinutes ? ctx.raw * 60000 : ctx.raw * 3600000;
+                return `YouTube: ${formatDuration(ms)}`;
+              }
             }
           }
         }
