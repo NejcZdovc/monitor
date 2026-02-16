@@ -137,8 +137,42 @@ class WindowTracker {
   _endCurrentSession(endTime?: number) {
     if (!this.currentSession) return
     const now = endTime || Date.now()
+    this._splitSessionAtHourBoundaries(Math.floor(now / 3600000))
     this.activityStore.update(this.currentSession.id, now)
     this.currentSession = null
+  }
+
+  /**
+   * Split the current activity session at every hour boundary between
+   * its start hour and `targetHour`.  After this call `currentSession`
+   * points to the slice that begins at `targetHour`.
+   */
+  _splitSessionAtHourBoundaries(targetHour: number) {
+    if (!this.currentSession) return
+    const sessionHour = Math.floor(this.currentSession.startedAt / 3600000)
+    if (targetHour <= sessionHour) return
+
+    const { appName, windowTitle, category } = this.currentSession
+    for (let h = sessionHour + 1; h <= targetHour; h++) {
+      const boundary = h * 3600000
+      this.activityStore.update(this.currentSession.id, boundary)
+      this.currentSession = {
+        id: 0,
+        appName,
+        windowTitle,
+        category,
+        startedAt: boundary,
+      }
+      this.currentSession.id = this.activityStore.insert({
+        appName,
+        windowTitle,
+        category,
+        startedAt: boundary,
+        endedAt: null,
+        durationMs: null,
+        isIdle: false,
+      })
+    }
   }
 
   _trackGoogleMeet(appName: string, windowTitle: string) {
@@ -183,16 +217,8 @@ class WindowTracker {
     const now = Date.now()
     const currentHour = Math.floor(now / 3600000)
 
-    // Split activity session
-    if (this.currentSession) {
-      const sessionHour = Math.floor(this.currentSession.startedAt / 3600000)
-      if (currentHour !== sessionHour) {
-        const hourBoundary = currentHour * 3600000
-        const { appName, windowTitle, category } = this.currentSession
-        this._endCurrentSession(hourBoundary)
-        this._startSession(appName, windowTitle, category)
-      }
-    }
+    // Split activity session at each missed hour boundary
+    this._splitSessionAtHourBoundaries(currentHour)
 
     // Split Google Meet session
     if (this.currentMeetSession) {

@@ -20,10 +20,37 @@ export class ActiveTimeChart {
     const scale = createTimeScale(rangeType === 'today' ? 0 : Infinity)
 
     if (rangeType === 'today') {
-      data = await window.monitor.getHourlyActivity(startMs, endMs)
+      const raw = await window.monitor.getHourlyActivity(startMs, endMs)
+      // Fill gaps so every hour between first active hour and now gets a bar
+      const firstActive = raw.find((d) => d.active_ms > 0)
+      if (firstActive) {
+        const hourMap = new Map(raw.map((d) => [d.hour!, d.active_ms]))
+        const firstHour = firstActive.hour!
+        const currentHour = Math.floor(Date.now() / 3600000) * 3600000
+        data = []
+        for (let h = firstHour; h <= currentHour; h += 3600000) {
+          data.push({ hour: h, active_ms: hourMap.get(h) || 0 })
+        }
+      } else {
+        data = []
+      }
       labels = data.map((d) => formatHourLabel(d.hour!))
     } else {
-      data = await window.monitor.getDailyActivity(startMs, endMs)
+      const raw = await window.monitor.getDailyActivity(startMs, endMs)
+      // Fill gaps so every day from range start to today gets a bar (0 if no data)
+      const dateMap = new Map(raw.map((d) => [d.date!, d.active_ms]))
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const rangeEnd = new Date(Math.min(endMs, today.getTime() + 86400000))
+      rangeEnd.setHours(0, 0, 0, 0)
+      data = []
+      const cursor = new Date(startMs)
+      cursor.setHours(0, 0, 0, 0)
+      while (cursor < rangeEnd) {
+        const key = cursor.toISOString().slice(0, 10)
+        data.push({ date: key, active_ms: dateMap.get(key) || 0 })
+        cursor.setDate(cursor.getDate() + 1)
+      }
       labels = data.map((d) => formatDateLabel(d.date!))
     }
 
