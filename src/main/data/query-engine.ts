@@ -146,6 +146,7 @@ class QueryEngine {
       FROM activity_sessions
       WHERE started_at < ? AND (ended_at > ? OR ended_at IS NULL) AND is_idle = 0
       GROUP BY category
+      HAVING total_ms >= 60000
       ORDER BY total_ms DESC
     `,
       )
@@ -161,6 +162,7 @@ class QueryEngine {
       FROM activity_sessions
       WHERE started_at < ? AND (ended_at > ? OR ended_at IS NULL) AND is_idle = 0
       GROUP BY app_name
+      HAVING total_ms >= 60000
       ORDER BY total_ms DESC
       LIMIT 20
     `,
@@ -177,6 +179,7 @@ class QueryEngine {
       FROM activity_sessions
       WHERE category = ? AND started_at < ? AND (ended_at > ? OR ended_at IS NULL) AND is_idle = 0
       GROUP BY app_name
+      HAVING total_ms >= 60000
       ORDER BY total_ms DESC
     `,
       )
@@ -212,6 +215,7 @@ class QueryEngine {
       FROM call_sessions
       WHERE started_at < ? AND (ended_at > ? OR ended_at IS NULL)
       GROUP BY date, app_name
+      HAVING total_ms >= 60000
       ORDER BY date ASC
     `,
       )
@@ -231,6 +235,7 @@ class QueryEngine {
       WHERE started_at < ? AND (ended_at > ? OR ended_at IS NULL)
         AND app_name = 'YouTube' AND is_idle = 0
       GROUP BY date
+      HAVING total_ms >= 60000
       ORDER BY date ASC
     `,
       )

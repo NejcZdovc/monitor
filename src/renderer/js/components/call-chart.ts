@@ -41,9 +41,15 @@ export class CallChart {
     }
 
     const sortedDates = [...dates].sort()
+
+    // Show minutes if max value is below 120 minutes, otherwise hours
+    const maxMs = Math.max(...data.map((d) => d.total_ms))
+    const useMinutes = maxMs < 7200000
+    const convert = useMinutes ? (ms: number) => ms / 60000 : msToHours
+
     const datasets = Object.entries(appMap).map(([appName, dateMap]) => ({
       label: appName,
-      data: sortedDates.map((d) => msToHours(dateMap[d] || 0)),
+      data: sortedDates.map((d) => convert(dateMap[d] || 0)),
       backgroundColor: CALL_COLORS[appName] || '#569cd6',
       borderRadius: 4,
       borderSkipped: false as const,
@@ -67,7 +73,7 @@ export class CallChart {
           y: {
             stacked: true,
             beginAtZero: true,
-            title: { display: true, text: 'Hours', color: '#858585' },
+            title: { display: true, text: useMinutes ? 'Minutes' : 'Hours', color: '#858585' },
             grid: { color: 'rgba(255,255,255,0.04)' },
             ticks: { color: '#858585', font: { size: 11 } },
           },
@@ -76,7 +82,10 @@ export class CallChart {
           legend: { labels: { color: '#d4d4d4', boxWidth: 12, padding: 16 } },
           tooltip: {
             callbacks: {
-              label: (ctx) => `${ctx.dataset.label}: ${formatDuration((ctx.raw as number) * 3600000)}`,
+              label: (ctx) => {
+                const ms = useMinutes ? (ctx.raw as number) * 60000 : (ctx.raw as number) * 3600000
+                return `${ctx.dataset.label}: ${formatDuration(ms)}`
+              },
             },
           },
         },
