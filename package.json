@@ -3,7 +3,7 @@
   "productName": "Monitor",
   "version": "0.0.6",
   "description": "macOS activity tracker for tracking computer usage",
-  "main": "src/main/main.js",
+  "main": ".vite/build/main.js",
   "repository": {
     "type": "git",
     "url": "https://github.com/NejcZdovc/monitor.git"
@@ -16,7 +16,9 @@
     "test": "jest --forceExit",
     "lint": "biome check src test",
     "lint:fix": "biome check --fix src test",
-    "format": "biome format --write src test"
+    "format": "biome format --write src test",
+    "typecheck": "tsc --noEmit -p tsconfig.main.json && tsc --noEmit -p tsconfig.renderer.json",
+    "full-check": "npm run lint && npm run test && npm run typecheck"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.0",
@@ -24,10 +26,15 @@
     "@electron-forge/maker-dmg": "^7.6.0",
     "@electron-forge/maker-zip": "^7.6.0",
     "@electron-forge/plugin-auto-unpack-natives": "^7.6.0",
+    "@electron-forge/plugin-vite": "^7.11.1",
     "@electron-forge/publisher-github": "^7.11.1",
     "@electron/rebuild": "^3.7.0",
+    "@types/better-sqlite3": "^7.6.13",
     "electron": "^40.0.0",
-    "jest": "^30.2.0"
+    "jest": "^30.2.0",
+    "ts-jest": "^29.4.6",
+    "typescript": "~5.9.0",
+    "vite": "^7.3.1"
   },
   "dependencies": {
     "better-sqlite3": "^12.6.2",

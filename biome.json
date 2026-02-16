@@ -2,13 +2,15 @@
   "$schema": "https://biomejs.dev/schemas/2.4.0/schema.json",
   "files": {
     "includes": [
-      "src/main/**/*.js",
-      "src/renderer/js/*.js",
-      "src/renderer/js/components/**/*.js",
-      "src/renderer/*.js",
+      "src/main/**/*.ts",
+      "src/renderer/js/*.ts",
+      "src/renderer/js/components/**/*.ts",
+      "src/renderer/*.ts",
       "src/renderer/**/*.html",
       "src/renderer/**/*.css",
-      "test/**/*.js"
+      "test/**/*.ts",
+      "*.config.ts",
+      "forge.config.ts"
     ],
     "ignoreUnknown": true
   },
@@ -48,13 +50,14 @@
         "noUnusedFunctionParameters": "warn"
       },
       "style": {
-        "useConst": "warn"
+        "useConst": "warn",
+        "noNonNullAssertion": "off"
       }
     }
   },
   "overrides": [
     {
-      "includes": ["src/renderer/**/*.js"],
+      "includes": ["src/renderer/**/*.ts"],
       "linter": {
         "rules": {
           "correctness": {
