@@ -1,14 +1,17 @@
 import type Database from 'better-sqlite3'
+import { extractProjectName } from '../categories'
 import type {
+  AiTimeRecord,
   AppBreakdown,
   CallTimeRecord,
   CategoryBreakdown,
   DailyActivity,
+  EntertainmentTimeRecord,
   HourlyActivity,
   InputRecord,
+  ProjectBreakdown,
   SummaryTotals,
   TopApp,
-  YouTubeTimeRecord,
 } from '../types'
 
 class QueryEngine {
@@ -64,14 +67,26 @@ class QueryEngine {
       )
       .get(now, endMs, startMs, endMs, startMs) as { total: number }
 
-    const youtube = this.db
+    const entertainment = this.db
       .prepare(
         `
       SELECT COALESCE(SUM(
         MIN(COALESCE(ended_at, ?), ?) - MAX(started_at, ?)
       ), 0) as total FROM activity_sessions
       WHERE started_at < ? AND (ended_at > ? OR ended_at IS NULL)
-        AND app_name = 'YouTube' AND is_idle = 0
+        AND category = 'Entertainment' AND is_idle = 0
+    `,
+      )
+      .get(now, endMs, startMs, endMs, startMs) as { total: number }
+
+    const ai = this.db
+      .prepare(
+        `
+      SELECT COALESCE(SUM(
+        MIN(COALESCE(ended_at, ?), ?) - MAX(started_at, ?)
+      ), 0) as total FROM activity_sessions
+      WHERE started_at < ? AND (ended_at > ? OR ended_at IS NULL)
+        AND category = 'AI' AND is_idle = 0
     `,
       )
       .get(now, endMs, startMs, endMs, startMs) as { total: number }
@@ -82,7 +97,8 @@ class QueryEngine {
       totalKeys: input.keys,
       totalClicks: input.clicks,
       callTimeMs: calls.total,
-      youtubeTimeMs: youtube.total,
+      entertainmentTimeMs: entertainment.total,
+      aiTimeMs: ai.total,
     }
   }
 
@@ -222,24 +238,75 @@ class QueryEngine {
       .all(now, endMs, startMs, endMs, startMs) as CallTimeRecord[]
   }
 
-  getYouTubeTimeByDay(startMs: number, endMs: number): YouTubeTimeRecord[] {
+  getEntertainmentTimeByDay(startMs: number, endMs: number): EntertainmentTimeRecord[] {
     const now = Date.now()
     // Sessions are split at hour boundaries, so simple day grouping works
     return this.db
       .prepare(
         `
       SELECT
+        app_name,
         strftime('%Y-%m-%d', started_at / 1000, 'unixepoch', 'localtime') as date,
         SUM(MIN(COALESCE(ended_at, ?), ?) - MAX(started_at, ?)) as total_ms
       FROM activity_sessions
       WHERE started_at < ? AND (ended_at > ? OR ended_at IS NULL)
-        AND app_name = 'YouTube' AND is_idle = 0
-      GROUP BY date
+        AND category = 'Entertainment' AND is_idle = 0
+      GROUP BY date, app_name
       HAVING total_ms >= 60000
       ORDER BY date ASC
     `,
       )
-      .all(now, endMs, startMs, endMs, startMs) as YouTubeTimeRecord[]
+      .all(now, endMs, startMs, endMs, startMs) as EntertainmentTimeRecord[]
+  }
+
+  getAiTimeByDay(startMs: number, endMs: number): AiTimeRecord[] {
+    const now = Date.now()
+    return this.db
+      .prepare(
+        `
+      SELECT
+        app_name,
+        strftime('%Y-%m-%d', started_at / 1000, 'unixepoch', 'localtime') as date,
+        SUM(MIN(COALESCE(ended_at, ?), ?) - MAX(started_at, ?)) as total_ms
+      FROM activity_sessions
+      WHERE started_at < ? AND (ended_at > ? OR ended_at IS NULL)
+        AND category = 'AI' AND is_idle = 0
+      GROUP BY date, app_name
+      HAVING total_ms >= 60000
+      ORDER BY date ASC
+    `,
+      )
+      .all(now, endMs, startMs, endMs, startMs) as AiTimeRecord[]
+  }
+
+  getProjectBreakdown(startMs: number, endMs: number): ProjectBreakdown[] {
+    const now = Date.now()
+    const rows = this.db
+      .prepare(
+        `
+      SELECT app_name, window_title,
+        SUM(MIN(COALESCE(ended_at, ?), ?) - MAX(started_at, ?)) as total_ms
+      FROM activity_sessions
+      WHERE started_at < ? AND (ended_at > ? OR ended_at IS NULL)
+        AND is_idle = 0 AND category = 'Coding'
+      GROUP BY app_name, window_title
+      HAVING total_ms >= 60000
+    `,
+      )
+      .all(now, endMs, startMs, endMs, startMs) as Array<{ app_name: string; window_title: string; total_ms: number }>
+
+    // Aggregate by project name across different window titles
+    const projectMap = new Map<string, number>()
+    for (const row of rows) {
+      const project = extractProjectName(row.app_name, row.window_title)
+      if (!project) continue
+      projectMap.set(project, (projectMap.get(project) || 0) + row.total_ms)
+    }
+
+    return [...projectMap.entries()]
+      .map(([project, total_ms]) => ({ project, total_ms }))
+      .sort((a, b) => b.total_ms - a.total_ms)
+      .slice(0, 10)
   }
 }
 

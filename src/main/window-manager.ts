@@ -13,7 +13,7 @@ function createDashboardWindow(): BrowserWindow {
   }
 
   // Use full height to show all charts without scrolling, clamped to screen
-  const DESIRED_WIDTH = 1100
+  const DESIRED_WIDTH = 1400
   const DESIRED_HEIGHT = 1450
   const display = screen.getPrimaryDisplay()
   const workArea = display.workArea
@@ -25,7 +25,7 @@ function createDashboardWindow(): BrowserWindow {
   dashboardWindow = new BrowserWindow({
     width,
     height,
-    minWidth: 900,
+    minWidth: 1100,
     minHeight: 600,
     title: 'Monitor',
     icon: nativeImage.createFromPath(iconPath),

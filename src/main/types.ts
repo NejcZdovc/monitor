@@ -4,7 +4,8 @@ export interface SummaryTotals {
   totalKeys: number
   totalClicks: number
   callTimeMs: number
-  youtubeTimeMs: number
+  entertainmentTimeMs: number
+  aiTimeMs: number
 }
 
 export interface HourlyActivity {
@@ -40,13 +41,25 @@ export interface CallTimeRecord {
   total_ms: number
 }
 
-export interface YouTubeTimeRecord {
+export interface EntertainmentTimeRecord {
+  app_name: string
+  date: string
+  total_ms: number
+}
+
+export interface AiTimeRecord {
+  app_name: string
   date: string
   total_ms: number
 }
 
 export interface TopApp {
   app_name: string
+  total_ms: number
+}
+
+export interface ProjectBreakdown {
+  project: string
   total_ms: number
 }
 

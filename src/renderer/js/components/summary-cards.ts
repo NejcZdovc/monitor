@@ -8,6 +8,7 @@ export class SummaryCards {
     document.getElementById('val-keys')!.textContent = formatNumber(data.totalKeys)
     document.getElementById('val-clicks')!.textContent = formatNumber(data.totalClicks)
     document.getElementById('val-calls')!.textContent = formatDurationShort(data.callTimeMs)
-    document.getElementById('val-youtube')!.textContent = formatDurationShort(data.youtubeTimeMs)
+    document.getElementById('val-entertainment')!.textContent = formatDurationShort(data.entertainmentTimeMs)
+    document.getElementById('val-ai')!.textContent = formatDurationShort(data.aiTimeMs)
   }
 }

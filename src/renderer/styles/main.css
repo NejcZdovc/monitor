@@ -197,7 +197,7 @@ body {
 /* Summary Cards */
 .summary-cards {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 12px;
   margin-bottom: 20px;
 }
@@ -252,7 +252,7 @@ body {
 /* Charts Grid */
 .charts-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 16px;
   max-width: 100%;
 }
@@ -481,7 +481,13 @@ body {
 }
 
 /* Responsive */
-@media (max-width: 1000px) {
+@media (max-width: 1200px) {
+  .charts-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 800px) {
   .summary-cards {
     grid-template-columns: repeat(3, 1fr);
   }

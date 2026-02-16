@@ -21,7 +21,8 @@ async function refresh(): Promise<void> {
     document.getElementById('keystrokes')!.textContent = fmtNumber(data.totalKeys)
     document.getElementById('clicks')!.textContent = fmtNumber(data.totalClicks)
     document.getElementById('callTime')!.textContent = fmtDuration(data.callTimeMs)
-    document.getElementById('youtube')!.textContent = fmtDuration(data.youtubeTimeMs)
+    document.getElementById('entertainment')!.textContent = fmtDuration(data.entertainmentTimeMs)
+    document.getElementById('aiTime')!.textContent = fmtDuration(data.aiTimeMs)
 
     const topApp = data.topApp
     document.getElementById('topApp')!.textContent = topApp

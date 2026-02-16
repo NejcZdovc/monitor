@@ -11,7 +11,10 @@ contextBridge.exposeInMainWorld('monitor', {
   getAppsByCategory: (category: string, startMs: number, endMs: number) =>
     ipcRenderer.invoke('get-apps-by-category', category, startMs, endMs),
   getCallTime: (startMs: number, endMs: number) => ipcRenderer.invoke('get-call-time', startMs, endMs),
-  getYouTubeTime: (startMs: number, endMs: number) => ipcRenderer.invoke('get-youtube-time', startMs, endMs),
+  getEntertainmentTime: (startMs: number, endMs: number) =>
+    ipcRenderer.invoke('get-entertainment-time', startMs, endMs),
+  getAiTime: (startMs: number, endMs: number) => ipcRenderer.invoke('get-ai-time', startMs, endMs),
+  getProjectBreakdown: (startMs: number, endMs: number) => ipcRenderer.invoke('get-project-breakdown', startMs, endMs),
   getTrackingStatus: () => ipcRenderer.invoke('get-tracking-status'),
   toggleTracking: () => ipcRenderer.invoke('toggle-tracking'),
   isDev: () => ipcRenderer.invoke('is-dev'),

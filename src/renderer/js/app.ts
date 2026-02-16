@@ -1,12 +1,14 @@
 import './chart-setup'
 import { ActiveTimeChart } from './components/active-time-chart'
+import { AiChart } from './components/ai-chart'
 import { AppUsageChart } from './components/app-usage-chart'
 import { CallChart } from './components/call-chart'
 import { CategoryDetail } from './components/category-detail'
+import { EntertainmentChart } from './components/entertainment-chart'
 import { InputChart } from './components/input-chart'
+import { ProjectChart } from './components/project-chart'
 import { SummaryCards } from './components/summary-cards'
 import { TimeRangePicker } from './components/time-range-picker'
-import { YouTubeChart } from './components/youtube-chart'
 import { getThisMonth, getThisWeek, getToday, type TimeRange } from './date-utils'
 
 class Dashboard {
@@ -16,8 +18,10 @@ class Dashboard {
   inputChart: InputChart
   categoryDetail: CategoryDetail
   appUsageChart: AppUsageChart
+  projectChart: ProjectChart
   callChart: CallChart
-  youtubeChart: YouTubeChart
+  entertainmentChart: EntertainmentChart
+  aiChart: AiChart
   trackingBtn: HTMLElement
   trackingDot: HTMLElement
   trackingLabel: HTMLElement
@@ -30,8 +34,10 @@ class Dashboard {
     this.inputChart = new InputChart('chart-input')
     this.categoryDetail = new CategoryDetail()
     this.appUsageChart = new AppUsageChart('chart-categories', 'chart-apps', this.categoryDetail)
+    this.projectChart = new ProjectChart('chart-projects')
     this.callChart = new CallChart('chart-calls')
-    this.youtubeChart = new YouTubeChart('chart-youtube')
+    this.entertainmentChart = new EntertainmentChart('chart-entertainment')
+    this.aiChart = new AiChart('chart-ai')
 
     // Tracking toggle
     this.trackingBtn = document.getElementById('tracking-btn')!
@@ -105,8 +111,10 @@ class Dashboard {
         this.activeTimeChart.render(start, end, type),
         this.inputChart.render(start, end, type),
         this.appUsageChart.render(start, end),
+        this.projectChart.render(start, end),
         this.callChart.render(start, end, type),
-        this.youtubeChart.render(start, end, type),
+        this.entertainmentChart.render(start, end, type),
+        this.aiChart.render(start, end, type),
       ])
     } catch (err) {
       console.error('Failed to render dashboard:', err)

@@ -39,8 +39,16 @@ function registerIpcHandlers(queryEngine: QueryEngine, trackerManager: TrackerMa
     return queryEngine.getCallTimeByDay(startMs, endMs)
   })
 
-  ipcMain.handle('get-youtube-time', (_event, startMs: number, endMs: number) => {
-    return queryEngine.getYouTubeTimeByDay(startMs, endMs)
+  ipcMain.handle('get-entertainment-time', (_event, startMs: number, endMs: number) => {
+    return queryEngine.getEntertainmentTimeByDay(startMs, endMs)
+  })
+
+  ipcMain.handle('get-ai-time', (_event, startMs: number, endMs: number) => {
+    return queryEngine.getAiTimeByDay(startMs, endMs)
+  })
+
+  ipcMain.handle('get-project-breakdown', (_event, startMs: number, endMs: number) => {
+    return queryEngine.getProjectBreakdown(startMs, endMs)
   })
 
   ipcMain.handle('get-tracking-status', () => {

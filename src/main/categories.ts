@@ -23,7 +23,7 @@ const APP_CATEGORIES: Record<string, string[]> = {
     'Zed',
   ],
   Terminal: ['Terminal', 'iTerm2', 'iTerm', 'Warp', 'Ghostty', 'Alacritty', 'kitty', 'Hyper', 'Tabby', 'Rio'],
-  AI: ['Claude', 'ChatGPT', 'Ollama', 'LM Studio', 'Poe', 'GitHub Copilot', 'Codeium', 'Codex'],
+  AI: ['Claude', 'ChatGPT', 'Ollama', 'LM Studio', 'Poe', 'GitHub Copilot', 'Codeium', 'Codex', 'Perplexity'],
   Communication: [
     'Slack',
     'Mail',
@@ -151,4 +151,58 @@ function isFaceTimeCall(appName: string): boolean {
   return appName === 'FaceTime'
 }
 
-export { APP_CATEGORIES, resolveCategory, isYouTube, isGoogleMeet, isFaceTimeCall, isBrowser }
+// IDE families for project name extraction from window titles
+const VSCODE_FAMILY = new Set(['Code', 'Visual Studio Code', 'Cursor', 'Windsurf', 'Sublime Text'])
+const JETBRAINS_FAMILY = new Set([
+  'WebStorm',
+  'IntelliJ IDEA',
+  'PyCharm',
+  'GoLand',
+  'CLion',
+  'PhpStorm',
+  'RubyMine',
+  'DataGrip',
+  'Fleet',
+  'Android Studio',
+])
+
+function extractProjectName(appName: string, windowTitle: string): string | null {
+  if (!windowTitle) return null
+
+  // VS Code / Cursor / Windsurf / Sublime Text: "file - project - AppName"
+  if (VSCODE_FAMILY.has(appName)) {
+    // Strip [SSH: host] or [WSL: distro] suffixes before parsing
+    let title = windowTitle.replace(/\s*\[.+?\]\s*/g, '')
+    // Strip dirty indicators from start
+    title = title.replace(/^[●*]\s*/, '')
+    const parts = title.split(' - ')
+    // Need at least 3 parts: file - project - AppName
+    if (parts.length >= 3) {
+      return parts[parts.length - 2].trim() || null
+    }
+    return null
+  }
+
+  // JetBrains IDEs: "project – file" (en-dash U+2013)
+  if (JETBRAINS_FAMILY.has(appName)) {
+    const parts = windowTitle.split(' \u2013 ')
+    if (parts.length >= 1 && parts[0].trim()) {
+      return parts[0].trim()
+    }
+    return null
+  }
+
+  // Zed: "file — project" (em-dash U+2014)
+  if (appName === 'Zed') {
+    const parts = windowTitle.split(' \u2014 ')
+    if (parts.length >= 2) {
+      return parts[parts.length - 1].trim() || null
+    }
+    return null
+  }
+
+  // Xcode, Vim, Neovim, Emacs — can't reliably extract project name
+  return null
+}
+
+export { APP_CATEGORIES, resolveCategory, isYouTube, isGoogleMeet, isFaceTimeCall, isBrowser, extractProjectName }

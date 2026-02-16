@@ -3,14 +3,19 @@ import { Chart } from '../chart-setup'
 import { formatDateLabel } from '../date-utils'
 import { createTimeScale, formatDuration, hideEmptyState, showEmptyState } from '../format-utils'
 
-const CALL_COLORS: Record<string, string> = {
-  Zoom: '#2D8CFF',
-  'Microsoft Teams': '#6264A7',
-  FaceTime: '#34C759',
-  'Google Meet': '#00897B',
+const AI_COLORS: Record<string, string> = {
+  Claude: '#D97757',
+  ChatGPT: '#10A37F',
+  Perplexity: '#20808D',
+  Ollama: '#FFFFFF',
+  'LM Studio': '#4FC3F7',
+  Poe: '#5B4DC7',
+  'GitHub Copilot': '#6E40C9',
+  Codeium: '#09B6A2',
+  Codex: '#0969DA',
 }
 
-export class CallChart {
+export class AiChart {
   canvas: HTMLCanvasElement
   chart: ChartType | null
 
@@ -20,13 +25,13 @@ export class CallChart {
   }
 
   async render(startMs: number, endMs: number, _rangeType: string): Promise<void> {
-    const data = await window.monitor.getCallTime(startMs, endMs)
+    const data = await window.monitor.getAiTime(startMs, endMs)
 
     if (this.chart) this.chart.destroy()
     this.chart = null
 
     if (!data.length) {
-      showEmptyState(this.canvas, 'No calls recorded yet')
+      showEmptyState(this.canvas, 'No AI activity recorded yet')
       return
     }
     hideEmptyState(this.canvas)
@@ -47,7 +52,7 @@ export class CallChart {
     const datasets = Object.entries(appMap).map(([appName, dateMap]) => ({
       label: appName,
       data: sortedDates.map((d) => scale.convert(dateMap[d] || 0)),
-      backgroundColor: CALL_COLORS[appName] || '#569cd6',
+      backgroundColor: AI_COLORS[appName] || '#569cd6',
       borderRadius: 4,
       borderSkipped: false as const,
     }))

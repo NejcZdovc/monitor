@@ -1,7 +1,7 @@
 import type { Chart as ChartType } from 'chart.js'
 import { Chart } from '../chart-setup'
 import { formatDateLabel, formatHourLabel } from '../date-utils'
-import { formatDuration, hideEmptyState, msToHours, showEmptyState } from '../format-utils'
+import { createTimeScale, formatDuration, hideEmptyState, showEmptyState } from '../format-utils'
 
 export class ActiveTimeChart {
   canvas: HTMLCanvasElement
@@ -16,8 +16,8 @@ export class ActiveTimeChart {
     let data: Array<{ hour?: number; date?: string; active_ms: number }>
     let labels: string[]
 
-    const useMinutes = rangeType === 'today'
-    const convert = useMinutes ? (ms: number) => ms / 60000 : msToHours
+    // Today shows hourly data in minutes, week/month shows daily data in hours
+    const scale = createTimeScale(rangeType === 'today' ? 0 : Infinity)
 
     if (rangeType === 'today') {
       data = await window.monitor.getHourlyActivity(startMs, endMs)
@@ -27,7 +27,7 @@ export class ActiveTimeChart {
       labels = data.map((d) => formatDateLabel(d.date!))
     }
 
-    const activeData = data.map((d) => convert(d.active_ms))
+    const activeData = data.map((d) => scale.convert(d.active_ms))
 
     if (this.chart) this.chart.destroy()
     this.chart = null
@@ -53,7 +53,7 @@ export class ActiveTimeChart {
         meta.data.forEach((bar, i) => {
           const value = activeData[i]
           if (value <= 0) return
-          const ms = useMinutes ? value * 60000 : value * 3600000
+          const ms = scale.toMs(value)
           const label = formatDuration(ms)
           ctx.fillText(label, bar.x, bar.y - 4)
         })
@@ -88,7 +88,7 @@ export class ActiveTimeChart {
           },
           y: {
             beginAtZero: true,
-            title: { display: true, text: useMinutes ? 'Minutes' : 'Hours', color: '#858585' },
+            title: { display: true, text: scale.label, color: '#858585' },
             grid: { color: 'rgba(255,255,255,0.04)' },
             ticks: { color: '#858585', font: { size: 11 } },
           },
@@ -98,8 +98,7 @@ export class ActiveTimeChart {
           tooltip: {
             callbacks: {
               label: (ctx) => {
-                const ms = useMinutes ? (ctx.raw as number) * 60000 : (ctx.raw as number) * 3600000
-                return `Active: ${formatDuration(ms)}`
+                return `Active: ${formatDuration(scale.toMs(ctx.raw as number))}`
               },
             },
           },

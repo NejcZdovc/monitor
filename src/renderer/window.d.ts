@@ -4,7 +4,8 @@ export interface SummaryTotals {
   totalKeys: number
   totalClicks: number
   callTimeMs: number
-  youtubeTimeMs: number
+  entertainmentTimeMs: number
+  aiTimeMs: number
 }
 
 export interface HourlyActivity {
@@ -40,8 +41,20 @@ export interface CallTimeRecord {
   total_ms: number
 }
 
-export interface YouTubeTimeRecord {
+export interface EntertainmentTimeRecord {
+  app_name: string
   date: string
+  total_ms: number
+}
+
+export interface AiTimeRecord {
+  app_name: string
+  date: string
+  total_ms: number
+}
+
+export interface ProjectBreakdown {
+  project: string
   total_ms: number
 }
 
@@ -59,7 +72,9 @@ export interface MonitorAPI {
   getAppBreakdown(startMs: number, endMs: number): Promise<AppBreakdown[]>
   getAppsByCategory(category: string, startMs: number, endMs: number): Promise<AppBreakdown[]>
   getCallTime(startMs: number, endMs: number): Promise<CallTimeRecord[]>
-  getYouTubeTime(startMs: number, endMs: number): Promise<YouTubeTimeRecord[]>
+  getEntertainmentTime(startMs: number, endMs: number): Promise<EntertainmentTimeRecord[]>
+  getAiTime(startMs: number, endMs: number): Promise<AiTimeRecord[]>
+  getProjectBreakdown(startMs: number, endMs: number): Promise<ProjectBreakdown[]>
   getTrackingStatus(): Promise<{ isTracking: boolean }>
   toggleTracking(): Promise<{ isTracking: boolean }>
   isDev(): Promise<boolean>

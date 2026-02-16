@@ -11,7 +11,7 @@ let popupWindow: BrowserWindow | null = null
 let ipcRegistered = false
 
 const POPUP_WIDTH = 260
-const POPUP_HEIGHT = 370
+const POPUP_HEIGHT = 414
 
 function showPopup() {
   // Destroy and recreate every time for a clean state
@@ -126,7 +126,15 @@ function createTray(
         summary = queryEngine.getSummaryTotals(start, end)
         topApp = queryEngine.getTopApp(start, end)
       } catch (_err) {
-        summary = { activeTimeMs: 0, idleTimeMs: 0, totalKeys: 0, totalClicks: 0, callTimeMs: 0, youtubeTimeMs: 0 }
+        summary = {
+          activeTimeMs: 0,
+          idleTimeMs: 0,
+          totalKeys: 0,
+          totalClicks: 0,
+          callTimeMs: 0,
+          entertainmentTimeMs: 0,
+          aiTimeMs: 0,
+        }
         topApp = undefined
       }
 

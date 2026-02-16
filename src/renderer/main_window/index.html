@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8">
@@ -62,10 +62,17 @@
           </div>
         </div>
         <div class="card">
-          <div class="card-icon">&#9654;</div>
+          <div class="card-icon">&#127917;</div>
           <div class="card-body">
-            <div class="card-label">YouTube</div>
-            <div class="card-value" id="val-youtube">--:--</div>
+            <div class="card-label">Entertainment</div>
+            <div class="card-value" id="val-entertainment">--:--</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-icon">&#129302;</div>
+          <div class="card-body">
+            <div class="card-label">AI Time</div>
+            <div class="card-value" id="val-ai">--:--</div>
           </div>
         </div>
       </section>
@@ -92,13 +99,23 @@
         </div>
 
         <div class="chart-container">
+          <h2 class="chart-title">Coding Projects</h2>
+          <div class="chart-wrap"><canvas id="chart-projects"></canvas></div>
+        </div>
+
+        <div class="chart-container">
           <h2 class="chart-title">Call Time</h2>
           <div class="chart-wrap"><canvas id="chart-calls"></canvas></div>
         </div>
 
         <div class="chart-container">
-          <h2 class="chart-title">YouTube Time</h2>
-          <div class="chart-wrap"><canvas id="chart-youtube"></canvas></div>
+          <h2 class="chart-title">Entertainment Time</h2>
+          <div class="chart-wrap"><canvas id="chart-entertainment"></canvas></div>
+        </div>
+
+        <div class="chart-container">
+          <h2 class="chart-title">AI Time</h2>
+          <div class="chart-wrap"><canvas id="chart-ai"></canvas></div>
         </div>
       </section>
     </main>

@@ -29,6 +29,28 @@ export function msToHours(ms: number): number {
   return ms / 3600000
 }
 
+export interface TimeScale {
+  /** Convert ms to display value (minutes or hours) */
+  convert: (ms: number) => number
+  /** Axis label: "Minutes" or "Hours" */
+  label: string
+  /** Convert a chart display value back to ms (for tooltips) */
+  toMs: (value: number) => number
+}
+
+/**
+ * Creates a time scale based on the maximum ms value.
+ * Uses minutes if maxMs < 120 minutes, otherwise hours.
+ */
+export function createTimeScale(maxMs: number): TimeScale {
+  const useMinutes = maxMs < 7200000
+  return {
+    convert: useMinutes ? (ms: number) => ms / 60000 : msToHours,
+    label: useMinutes ? 'Minutes' : 'Hours',
+    toMs: useMinutes ? (v: number) => v * 60000 : (v: number) => v * 3600000,
+  }
+}
+
 export function showEmptyState(canvas: HTMLCanvasElement, message?: string): void {
   const wrap = canvas.parentElement!
   canvas.style.display = 'none'
