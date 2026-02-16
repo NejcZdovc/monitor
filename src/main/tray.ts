@@ -74,7 +74,7 @@ function showPopup() {
   if (TRAY_POPUP_VITE_DEV_SERVER_URL) {
     popupWindow.loadURL(`${TRAY_POPUP_VITE_DEV_SERVER_URL}/tray_popup/index.html`)
   } else {
-    popupWindow.loadFile(path.join(__dirname, `../renderer/tray_popup/index.html`))
+    popupWindow.loadFile(path.join(__dirname, `../renderer/tray_popup/tray_popup/index.html`))
   }
 
   popupWindow.webContents.once('did-finish-load', () => {

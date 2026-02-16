@@ -43,7 +43,7 @@ function createDashboardWindow(): BrowserWindow {
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
     dashboardWindow.loadURL(`${MAIN_WINDOW_VITE_DEV_SERVER_URL}/main_window/index.html`)
   } else {
-    dashboardWindow.loadFile(path.join(__dirname, `../renderer/main_window/index.html`))
+    dashboardWindow.loadFile(path.join(__dirname, `../renderer/main_window/main_window/index.html`))
   }
 
   // Show dock icon when dashboard is open

@@ -1,9 +1,16 @@
+import { builtinModules } from 'node:module'
 import { defineConfig } from 'vite'
 
 export default defineConfig({
   build: {
     rollupOptions: {
-      external: ['better-sqlite3', 'uiohook-napi', 'electron'],
+      external: [
+        'electron',
+        'electron/main',
+        ...builtinModules.flatMap((m) => [m, `node:${m}`]),
+        'better-sqlite3',
+        'uiohook-napi',
+      ],
     },
   },
 })
