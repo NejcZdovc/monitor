@@ -133,7 +133,14 @@ const BROWSER_TITLE_APP_NAMES: Record<string, string> = {
   twitch: 'Twitch',
 }
 
-const BROWSER_APPS: Set<string> = new Set(APP_CATEGORIES.Browsers)
+const BROWSER_APPS: Set<string> = new Set(APP_CATEGORIES.Browsers.map((b) => b.toLowerCase()))
+
+/** Case-insensitive check: does `a` contain `b` or vice-versa? */
+function fuzzyMatch(a: string, b: string): boolean {
+  const al = a.toLowerCase().replace(/_/g, ' ')
+  const bl = b.toLowerCase()
+  return al.includes(bl) || bl.includes(al)
+}
 
 function resolveCategory(appName: string, windowTitle: string): string {
   if (isBrowser(appName) && windowTitle) {
@@ -146,7 +153,7 @@ function resolveCategory(appName: string, windowTitle: string): string {
     return 'Browsers'
   }
   for (const [category, apps] of Object.entries(APP_CATEGORIES)) {
-    if (apps.some((app) => appName.includes(app) || app.includes(appName))) {
+    if (apps.some((app) => fuzzyMatch(appName, app))) {
       return category
     }
   }
@@ -170,7 +177,7 @@ function resolveBrowserAppName(appName: string, windowTitle: string): string {
 }
 
 function isBrowser(appName: string): boolean {
-  return BROWSER_APPS.has(appName) || APP_CATEGORIES.Browsers.some((b) => appName.includes(b) || b.includes(appName))
+  return BROWSER_APPS.has(appName.toLowerCase()) || APP_CATEGORIES.Browsers.some((b) => fuzzyMatch(appName, b))
 }
 
 function isYouTube(appName: string, windowTitle: string): boolean {
@@ -188,25 +195,28 @@ function isFaceTimeCall(appName: string): boolean {
 }
 
 // IDE families for project name extraction from window titles
-const VSCODE_FAMILY = new Set(['Code', 'Visual Studio Code', 'Cursor', 'Windsurf', 'Sublime Text'])
+const VSCODE_FAMILY = new Set(['code', 'visual studio code', 'windsurf', 'sublime text', 'sublime_text'])
+// Cursor and Zed use em-dash (U+2014): "file — project"
+const EMDASH_FAMILY = new Set(['cursor', 'zed'])
 const JETBRAINS_FAMILY = new Set([
-  'WebStorm',
-  'IntelliJ IDEA',
-  'PyCharm',
-  'GoLand',
-  'CLion',
-  'PhpStorm',
-  'RubyMine',
-  'DataGrip',
-  'Fleet',
-  'Android Studio',
+  'webstorm',
+  'intellij idea',
+  'pycharm',
+  'goland',
+  'clion',
+  'phpstorm',
+  'rubymine',
+  'datagrip',
+  'fleet',
+  'android studio',
 ])
 
 function extractProjectName(appName: string, windowTitle: string): string | null {
   if (!windowTitle) return null
+  const appLower = appName.toLowerCase().replace(/_/g, ' ')
 
-  // VS Code / Cursor / Windsurf / Sublime Text: "file - project - AppName"
-  if (VSCODE_FAMILY.has(appName)) {
+  // VS Code / Windsurf / Sublime Text: "file - project - AppName"
+  if (VSCODE_FAMILY.has(appLower)) {
     // Strip [SSH: host] or [WSL: distro] suffixes before parsing
     let title = windowTitle.replace(/\s*\[.+?\]\s*/g, '')
     // Strip dirty indicators from start
@@ -219,20 +229,20 @@ function extractProjectName(appName: string, windowTitle: string): string | null
     return null
   }
 
-  // JetBrains IDEs: "project – file" (en-dash U+2013)
-  if (JETBRAINS_FAMILY.has(appName)) {
-    const parts = windowTitle.split(' \u2013 ')
-    if (parts.length >= 1 && parts[0].trim()) {
-      return parts[0].trim()
+  // Cursor / Zed: "file — project" (em-dash U+2014)
+  if (EMDASH_FAMILY.has(appLower)) {
+    const parts = windowTitle.split(' \u2014 ')
+    if (parts.length >= 2) {
+      return parts[parts.length - 1].trim() || null
     }
     return null
   }
 
-  // Zed: "file — project" (em-dash U+2014)
-  if (appName === 'Zed') {
-    const parts = windowTitle.split(' \u2014 ')
-    if (parts.length >= 2) {
-      return parts[parts.length - 1].trim() || null
+  // JetBrains IDEs: "project – file" (en-dash U+2013)
+  if (JETBRAINS_FAMILY.has(appLower)) {
+    const parts = windowTitle.split(' \u2013 ')
+    if (parts.length >= 1 && parts[0].trim()) {
+      return parts[0].trim()
     }
     return null
   }
