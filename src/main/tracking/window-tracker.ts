@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { isFaceTimeCall, isGoogleMeet, resolveCategory } from '../categories'
+import { isFaceTimeCall, isGoogleMeet, resolveBrowserAppName, resolveCategory } from '../categories'
 import type { ActivityStore } from '../data/activity-store'
 import type { CallStore } from '../data/call-store'
 import type { CallSessionRef, TrackedSession } from '../types'
@@ -90,6 +90,7 @@ class WindowTracker {
         if (appName === 'Monitor' || appName === 'Electron') return
 
         const category = resolveCategory(appName, windowTitle)
+        const resolvedApp = resolveBrowserAppName(appName, windowTitle)
 
         // Split sessions at hour boundaries first, before any close/open logic
         this._splitAtHourBoundary()
@@ -100,12 +101,12 @@ class WindowTracker {
 
         const changed =
           !this.currentSession ||
-          this.currentSession.appName !== appName ||
+          this.currentSession.appName !== resolvedApp ||
           this.currentSession.windowTitle !== windowTitle
 
         if (changed) {
           this._endCurrentSession()
-          this._startSession(appName, windowTitle, category)
+          this._startSession(resolvedApp, windowTitle, category)
         }
       } catch (_e) {
         // Window detection can fail temporarily

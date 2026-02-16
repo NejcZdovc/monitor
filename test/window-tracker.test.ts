@@ -769,13 +769,14 @@ describe('WindowTracker', () => {
   describe('browser YouTube detection', () => {
     /**
      * EXPECTED: YouTube in browser title is categorized as Entertainment,
-     * and the app_name stays as the browser, not "YouTube".
+     * and the app_name is resolved to "YouTube" (not the browser name)
+     * so that charts can group and colour it correctly.
      */
-    test('tracks YouTube as the browser app name, not YouTube', () => {
+    test('resolves YouTube as app name when browser tab matches', () => {
       tracker._poll()
       simulatePoll('Google Chrome', 'YouTube - How to Code')
 
-      expect(activityStore.inserts[0].appName).toBe('Google Chrome')
+      expect(activityStore.inserts[0].appName).toBe('YouTube')
       expect(activityStore.inserts[0].category).toBe('Entertainment')
     })
   })

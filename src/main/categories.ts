@@ -113,6 +113,26 @@ const BROWSER_TITLE_CATEGORIES: Record<string, string[]> = {
   Entertainment: ['youtube', 'netflix', 'twitch'],
 }
 
+// Maps a browser title pattern to a display-friendly app name.
+// When a browser tab matches one of these patterns the session is stored
+// with the service name (e.g. "YouTube") instead of the browser name
+// (e.g. "Google Chrome") so charts can group and colour them correctly.
+const BROWSER_TITLE_APP_NAMES: Record<string, string> = {
+  claude: 'Claude',
+  chatgpt: 'ChatGPT',
+  gemini: 'Gemini',
+  perplexity: 'Perplexity',
+  midjourney: 'Midjourney',
+  copilot: 'Copilot',
+  'hugging face': 'Hugging Face',
+  'poe.com': 'Poe',
+  'google meet': 'Google Meet',
+  'meet -': 'Google Meet',
+  youtube: 'YouTube',
+  netflix: 'Netflix',
+  twitch: 'Twitch',
+}
+
 const BROWSER_APPS: Set<string> = new Set(APP_CATEGORIES.Browsers)
 
 function resolveCategory(appName: string, windowTitle: string): string {
@@ -131,6 +151,22 @@ function resolveCategory(appName: string, windowTitle: string): string {
     }
   }
   return 'Other'
+}
+
+/**
+ * When a browser tab matches a known service (YouTube, Claude, etc.),
+ * return the service display name instead of the browser name.
+ * Returns the original appName when there is no match.
+ */
+function resolveBrowserAppName(appName: string, windowTitle: string): string {
+  if (!isBrowser(appName) || !windowTitle) return appName
+  const titleLower = windowTitle.toLowerCase()
+  for (const [pattern, displayName] of Object.entries(BROWSER_TITLE_APP_NAMES)) {
+    if (titleLower.includes(pattern)) {
+      return displayName
+    }
+  }
+  return appName
 }
 
 function isBrowser(appName: string): boolean {
@@ -205,4 +241,13 @@ function extractProjectName(appName: string, windowTitle: string): string | null
   return null
 }
 
-export { APP_CATEGORIES, resolveCategory, isYouTube, isGoogleMeet, isFaceTimeCall, isBrowser, extractProjectName }
+export {
+  APP_CATEGORIES,
+  extractProjectName,
+  isBrowser,
+  isFaceTimeCall,
+  isGoogleMeet,
+  isYouTube,
+  resolveBrowserAppName,
+  resolveCategory,
+}
