@@ -19,13 +19,10 @@ class QueryEngine {
   db: Database.Database
 
   // Cached prepared statements
-  _activeStmt: Statement
-  _idleStmt: Statement
+  _summaryActivityStmt: Statement
   _inputStmt: Statement
   _callsStmt: Statement
-  _fgEntertainmentStmt: Statement
   _bgEntertainmentStmt: Statement
-  _aiStmt: Statement
   _hourlyStmt: Statement
   _dailyStmt: Statement
   _inputActivityStmt: Statement
@@ -41,18 +38,19 @@ class QueryEngine {
   constructor(db: Database.Database) {
     this.db = db
 
-    this._activeStmt = db.prepare(`
-      SELECT COALESCE(SUM(
-        MIN(COALESCE(ended_at, ?), ?) - MAX(started_at, ?)
-      ), 0) as total FROM activity_sessions
-      WHERE started_at < ? AND (ended_at > ? OR ended_at IS NULL) AND is_idle = 0
-    `)
-
-    this._idleStmt = db.prepare(`
-      SELECT COALESCE(SUM(
-        MIN(COALESCE(ended_at, ?), ?) - MAX(started_at, ?)
-      ), 0) as total FROM activity_sessions
-      WHERE started_at < ? AND (ended_at > ? OR ended_at IS NULL) AND is_idle = 1
+    // Single query for active, idle, fg entertainment, and AI totals
+    this._summaryActivityStmt = db.prepare(`
+      SELECT
+        COALESCE(SUM(CASE WHEN is_idle = 0 THEN clamped END), 0) as active,
+        COALESCE(SUM(CASE WHEN is_idle = 1 THEN clamped END), 0) as idle,
+        COALESCE(SUM(CASE WHEN category = 'Entertainment' AND is_idle = 0 THEN clamped END), 0) as entertainment,
+        COALESCE(SUM(CASE WHEN category = 'AI' AND is_idle = 0 THEN clamped END), 0) as ai
+      FROM (
+        SELECT is_idle, category,
+          MIN(COALESCE(ended_at, ?), ?) - MAX(started_at, ?) as clamped
+        FROM activity_sessions
+        WHERE started_at < ? AND (ended_at > ? OR ended_at IS NULL)
+      )
     `)
 
     this._inputStmt = db.prepare(`
@@ -67,27 +65,11 @@ class QueryEngine {
       WHERE started_at < ? AND (ended_at > ? OR ended_at IS NULL)
     `)
 
-    this._fgEntertainmentStmt = db.prepare(`
-      SELECT COALESCE(SUM(
-        MIN(COALESCE(ended_at, ?), ?) - MAX(started_at, ?)
-      ), 0) as total FROM activity_sessions
-      WHERE started_at < ? AND (ended_at > ? OR ended_at IS NULL)
-        AND category = 'Entertainment' AND is_idle = 0
-    `)
-
     this._bgEntertainmentStmt = db.prepare(`
       SELECT COALESCE(SUM(
         MIN(COALESCE(ended_at, ?), ?) - MAX(started_at, ?)
       ), 0) as total FROM background_entertainment_sessions
       WHERE started_at < ? AND (ended_at > ? OR ended_at IS NULL)
-    `)
-
-    this._aiStmt = db.prepare(`
-      SELECT COALESCE(SUM(
-        MIN(COALESCE(ended_at, ?), ?) - MAX(started_at, ?)
-      ), 0) as total FROM activity_sessions
-      WHERE started_at < ? AND (ended_at > ? OR ended_at IS NULL)
-        AND category = 'AI' AND is_idle = 0
     `)
 
     this._hourlyStmt = db.prepare(`
@@ -216,22 +198,24 @@ class QueryEngine {
 
   getSummaryTotals(startMs: number, endMs: number): SummaryTotals {
     const now = Date.now()
-    const active = this._activeStmt.get(now, endMs, startMs, endMs, startMs) as { total: number }
-    const idle = this._idleStmt.get(now, endMs, startMs, endMs, startMs) as { total: number }
+    const activity = this._summaryActivityStmt.get(now, endMs, startMs, endMs, startMs) as {
+      active: number
+      idle: number
+      entertainment: number
+      ai: number
+    }
     const input = this._inputStmt.get(startMs, endMs) as { keys: number; clicks: number }
     const calls = this._callsStmt.get(now, endMs, startMs, endMs, startMs) as { total: number }
-    const fgEntertainment = this._fgEntertainmentStmt.get(now, endMs, startMs, endMs, startMs) as { total: number }
     const bgEntertainment = this._bgEntertainmentStmt.get(now, endMs, startMs, endMs, startMs) as { total: number }
-    const ai = this._aiStmt.get(now, endMs, startMs, endMs, startMs) as { total: number }
 
     return {
-      activeTimeMs: active.total,
-      idleTimeMs: idle.total,
+      activeTimeMs: activity.active,
+      idleTimeMs: activity.idle,
       totalKeys: input.keys,
       totalClicks: input.clicks,
       callTimeMs: calls.total,
-      entertainmentTimeMs: fgEntertainment.total + bgEntertainment.total,
-      aiTimeMs: ai.total,
+      entertainmentTimeMs: activity.entertainment + bgEntertainment.total,
+      aiTimeMs: activity.ai,
     }
   }
 

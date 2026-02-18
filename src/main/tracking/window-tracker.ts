@@ -213,6 +213,25 @@ class WindowTracker {
     }
   }
 
+  _splitCallSessionAtHourBoundaries(session: CallSessionRef, targetHour: number): CallSessionRef {
+    const sessionHour = Math.floor(session.startedAt / 3600000)
+    if (targetHour <= sessionHour) return session
+
+    let current = session
+    for (let h = sessionHour + 1; h <= targetHour; h++) {
+      const boundary = h * 3600000
+      this.callStore.update(current.id, boundary, current.startedAt)
+      current = { id: 0, appName: current.appName, startedAt: boundary }
+      current.id = this.callStore.insert({
+        appName: current.appName,
+        startedAt: boundary,
+        endedAt: null,
+        durationMs: null,
+      })
+    }
+    return current
+  }
+
   _splitAtHourBoundary() {
     const now = Date.now()
     const currentHour = Math.floor(now / 3600000)
@@ -222,34 +241,12 @@ class WindowTracker {
 
     // Split Google Meet session
     if (this.currentMeetSession) {
-      const sessionHour = Math.floor(this.currentMeetSession.startedAt / 3600000)
-      if (currentHour !== sessionHour) {
-        const hourBoundary = currentHour * 3600000
-        this.callStore.update(this.currentMeetSession.id, hourBoundary, this.currentMeetSession.startedAt)
-        this.currentMeetSession = { id: 0, appName: 'Google Meet', startedAt: hourBoundary }
-        this.currentMeetSession.id = this.callStore.insert({
-          appName: 'Google Meet',
-          startedAt: hourBoundary,
-          endedAt: null,
-          durationMs: null,
-        })
-      }
+      this.currentMeetSession = this._splitCallSessionAtHourBoundaries(this.currentMeetSession, currentHour)
     }
 
     // Split FaceTime session
     if (this.currentFaceTimeSession) {
-      const sessionHour = Math.floor(this.currentFaceTimeSession.startedAt / 3600000)
-      if (currentHour !== sessionHour) {
-        const hourBoundary = currentHour * 3600000
-        this.callStore.update(this.currentFaceTimeSession.id, hourBoundary, this.currentFaceTimeSession.startedAt)
-        this.currentFaceTimeSession = { id: 0, appName: 'FaceTime', startedAt: hourBoundary }
-        this.currentFaceTimeSession.id = this.callStore.insert({
-          appName: 'FaceTime',
-          startedAt: hourBoundary,
-          endedAt: null,
-          durationMs: null,
-        })
-      }
+      this.currentFaceTimeSession = this._splitCallSessionAtHourBoundaries(this.currentFaceTimeSession, currentHour)
     }
   }
 

@@ -42,8 +42,13 @@ class CallDetector {
       return
     }
 
+    // Safety timeout: reset flag even if a pgrep callback never fires
+    const safetyTimer = setTimeout(() => {
+      this.checking = false
+    }, 10000)
+
     for (const app of CALL_PROCESSES) {
-      execFile('pgrep', ['-x', app.process], (err) => {
+      execFile('pgrep', ['-x', app.process], { timeout: 5000 }, (err) => {
         if (!err) {
           runningCalls.add(app.name)
 
@@ -62,6 +67,7 @@ class CallDetector {
 
         pending--
         if (pending === 0) {
+          clearTimeout(safetyTimer)
           // All checks done -- end calls that are no longer running
           for (const [appName, session] of this.activeCalls) {
             if (!runningCalls.has(appName)) {

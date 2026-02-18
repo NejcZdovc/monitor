@@ -6,5 +6,8 @@ contextBridge.exposeInMainWorld('trayApi', {
   closeDashboard: () => ipcRenderer.send('tray-close-dashboard'),
   toggleTracking: () => ipcRenderer.invoke('tray-toggle-tracking'),
   quit: () => ipcRenderer.send('tray-quit'),
-  onRefresh: (callback: () => void) => ipcRenderer.on('tray-refresh', callback),
+  onRefresh: (callback: () => void) => {
+    ipcRenderer.removeAllListeners('tray-refresh')
+    ipcRenderer.on('tray-refresh', callback)
+  },
 })

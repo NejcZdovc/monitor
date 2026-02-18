@@ -57,7 +57,13 @@ class YouTubeTracker {
     if (this.checking) return
     this.checking = true
 
+    // Safety timeout: reset flag even if execFile callback never fires
+    const safetyTimer = setTimeout(() => {
+      this.checking = false
+    }, 10000)
+
     execFile('osascript', [SCRIPT_PATH], { timeout: 8000 }, (err, stdout) => {
+      clearTimeout(safetyTimer)
       this.checking = false
       try {
         const result = !err ? stdout.trim() : ''

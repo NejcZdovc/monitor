@@ -13,32 +13,10 @@ let ipcRegistered = false
 const POPUP_WIDTH = 260
 const POPUP_HEIGHT = 414
 
-function showPopup() {
-  // Destroy and recreate every time for a clean state
-  if (popupWindow && !popupWindow.isDestroyed()) {
-    popupWindow.destroy()
-    popupWindow = null
-  }
-
-  const trayBounds = tray!.getBounds()
-  const display = screen.getDisplayNearestPoint({ x: trayBounds.x, y: trayBounds.y })
-
-  let x = Math.round(trayBounds.x + trayBounds.width / 2 - POPUP_WIDTH / 2)
-  const y = Math.round(trayBounds.y + trayBounds.height + 4)
-
-  const screenBounds = display.workArea
-  if (x + POPUP_WIDTH > screenBounds.x + screenBounds.width) {
-    x = screenBounds.x + screenBounds.width - POPUP_WIDTH
-  }
-  if (x < screenBounds.x) {
-    x = screenBounds.x
-  }
-
-  popupWindow = new BrowserWindow({
+function createPopupWindow(): BrowserWindow {
+  const win = new BrowserWindow({
     width: POPUP_WIDTH,
     height: POPUP_HEIGHT,
-    x,
-    y,
     show: false,
     frame: false,
     resizable: false,
@@ -59,30 +37,64 @@ function showPopup() {
     },
   })
 
-  popupWindow.setAlwaysOnTop(true, 'pop-up-menu')
+  win.setAlwaysOnTop(true, 'pop-up-menu')
 
-  popupWindow.on('blur', () => {
-    if (popupWindow && !popupWindow.isDestroyed() && popupWindow.isVisible()) {
-      popupWindow.hide()
+  win.on('blur', () => {
+    if (!win.isDestroyed() && win.isVisible()) {
+      win.hide()
     }
   })
 
-  popupWindow.on('closed', () => {
+  win.on('closed', () => {
     popupWindow = null
   })
 
   if (TRAY_POPUP_VITE_DEV_SERVER_URL) {
-    popupWindow.loadURL(`${TRAY_POPUP_VITE_DEV_SERVER_URL}/tray_popup/index.html`)
+    win.loadURL(`${TRAY_POPUP_VITE_DEV_SERVER_URL}/tray_popup/index.html`)
   } else {
-    popupWindow.loadFile(path.join(__dirname, `../renderer/tray_popup/tray_popup/index.html`))
+    win.loadFile(path.join(__dirname, `../renderer/tray_popup/tray_popup/index.html`))
   }
 
-  popupWindow.webContents.once('did-finish-load', () => {
-    if (popupWindow && !popupWindow.isDestroyed()) {
-      popupWindow.show()
-      popupWindow.focus()
-    }
-  })
+  return win
+}
+
+function positionPopup(win: BrowserWindow) {
+  const trayBounds = tray!.getBounds()
+  const display = screen.getDisplayNearestPoint({ x: trayBounds.x, y: trayBounds.y })
+
+  let x = Math.round(trayBounds.x + trayBounds.width / 2 - POPUP_WIDTH / 2)
+  const y = Math.round(trayBounds.y + trayBounds.height + 4)
+
+  const screenBounds = display.workArea
+  if (x + POPUP_WIDTH > screenBounds.x + screenBounds.width) {
+    x = screenBounds.x + screenBounds.width - POPUP_WIDTH
+  }
+  if (x < screenBounds.x) {
+    x = screenBounds.x
+  }
+
+  win.setPosition(x, y)
+}
+
+function showPopup() {
+  // Reuse existing window — only create once
+  if (!popupWindow || popupWindow.isDestroyed()) {
+    popupWindow = createPopupWindow()
+    popupWindow.webContents.once('did-finish-load', () => {
+      if (popupWindow && !popupWindow.isDestroyed()) {
+        positionPopup(popupWindow)
+        popupWindow.show()
+        popupWindow.focus()
+      }
+    })
+    return
+  }
+
+  // Window exists — reposition, signal refresh, and show
+  positionPopup(popupWindow)
+  popupWindow.webContents.send('tray-refresh')
+  popupWindow.show()
+  popupWindow.focus()
 }
 
 function togglePopup() {

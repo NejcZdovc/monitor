@@ -18,7 +18,7 @@ class AppDatabase {
     this.db.exec('CREATE TABLE IF NOT EXISTS schema_version (version INTEGER PRIMARY KEY)')
     const row = this.db.prepare('SELECT MAX(version) as v FROM schema_version').get() as { v: number } | undefined
     const currentVersion = row?.v || 0
-    const migrations = [this._v1.bind(this), this._v2.bind(this)]
+    const migrations = [this._v1.bind(this), this._v2.bind(this), this._v3.bind(this)]
     for (let i = currentVersion; i < migrations.length; i++) {
       migrations[i]()
       this.db.prepare('INSERT INTO schema_version (version) VALUES (?)').run(i + 1)
@@ -84,6 +84,13 @@ class AppDatabase {
         duration_ms INTEGER
       );
       CREATE INDEX idx_bg_entertainment_started ON background_entertainment_sessions(started_at);
+    `)
+  }
+
+  _v3() {
+    this.db.exec(`
+      CREATE INDEX idx_activity_idle_started ON activity_sessions(is_idle, started_at);
+      CREATE INDEX idx_activity_category_started ON activity_sessions(category, started_at);
     `)
   }
 

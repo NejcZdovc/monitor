@@ -40,6 +40,7 @@ const APP_CATEGORIES: Record<string, string[]> = {
   Meetings: ['zoom.us', 'Zoom', 'Microsoft Teams', 'Teams', 'FaceTime', 'Webex', 'Skype', 'Around', 'Loom'],
   Browsers: [
     'Brave Browser',
+    'Brave Browser Beta',
     'Google Chrome',
     'Safari',
     'Arc',
@@ -135,11 +136,18 @@ const BROWSER_TITLE_APP_NAMES: Record<string, string> = {
 
 const BROWSER_APPS: Set<string> = new Set(APP_CATEGORIES.Browsers.map((b) => b.toLowerCase()))
 
-/** Case-insensitive check: does `a` contain `b` or vice-versa? */
-function fuzzyMatch(a: string, b: string): boolean {
-  const al = a.toLowerCase().replace(/_/g, ' ')
-  const bl = b.toLowerCase()
-  return al.includes(bl) || bl.includes(al)
+// Pre-built lookup map: normalized app name → category (avoids linear scan on every poll)
+const APP_CATEGORY_MAP = new Map<string, string>()
+for (const [category, apps] of Object.entries(APP_CATEGORIES)) {
+  for (const app of apps) {
+    // Store both the exact lowercase and underscore-normalized form
+    const lower = app.toLowerCase()
+    APP_CATEGORY_MAP.set(lower, category)
+    const normalized = lower.replace(/ /g, '_')
+    if (normalized !== lower) {
+      APP_CATEGORY_MAP.set(normalized, category)
+    }
+  }
 }
 
 function resolveCategory(appName: string, windowTitle: string): string {
@@ -152,12 +160,8 @@ function resolveCategory(appName: string, windowTitle: string): string {
     }
     return 'Browsers'
   }
-  for (const [category, apps] of Object.entries(APP_CATEGORIES)) {
-    if (apps.some((app) => fuzzyMatch(appName, app))) {
-      return category
-    }
-  }
-  return 'Other'
+  const normalized = appName.toLowerCase().replace(/_/g, ' ')
+  return APP_CATEGORY_MAP.get(normalized) || APP_CATEGORY_MAP.get(appName.toLowerCase()) || 'Other'
 }
 
 /**
@@ -177,7 +181,8 @@ function resolveBrowserAppName(appName: string, windowTitle: string): string {
 }
 
 function isBrowser(appName: string): boolean {
-  return BROWSER_APPS.has(appName.toLowerCase()) || APP_CATEGORIES.Browsers.some((b) => fuzzyMatch(appName, b))
+  // Fast Set lookup covers exact names and underscore variants (e.g. brave_browser → brave browser)
+  return BROWSER_APPS.has(appName.toLowerCase().replace(/_/g, ' '))
 }
 
 function isYouTube(appName: string, windowTitle: string): boolean {
