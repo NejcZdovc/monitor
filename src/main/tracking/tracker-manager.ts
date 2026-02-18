@@ -1,4 +1,5 @@
 import { ActivityStore } from '../data/activity-store'
+import { BackgroundEntertainmentStore } from '../data/background-entertainment-store'
 import { CallStore } from '../data/call-store'
 import type { AppDatabase } from '../data/database'
 import { InputStore } from '../data/input-store'
@@ -23,11 +24,12 @@ class TrackerManager {
     this.activityStore = new ActivityStore(database.db)
     this.inputStore = new InputStore(database.db)
     this.callStore = new CallStore(database.db)
+    const bgEntertainmentStore = new BackgroundEntertainmentStore(database.db)
 
     this.windowTracker = new WindowTracker(this.activityStore, this.callStore)
     this.inputTracker = new InputTracker(this.inputStore)
     this.callDetector = new CallDetector(this.callStore)
-    this.youtubeTracker = new YouTubeTracker(this.activityStore)
+    this.youtubeTracker = new YouTubeTracker(bgEntertainmentStore)
 
     this.idleDetector = new IdleDetector(
       (idleStartedAt: number) => this._handleIdleStart(idleStartedAt),

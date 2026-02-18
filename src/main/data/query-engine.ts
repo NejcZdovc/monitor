@@ -67,7 +67,7 @@ class QueryEngine {
       )
       .get(now, endMs, startMs, endMs, startMs) as { total: number }
 
-    const entertainment = this.db
+    const fgEntertainment = this.db
       .prepare(
         `
       SELECT COALESCE(SUM(
@@ -78,6 +78,19 @@ class QueryEngine {
     `,
       )
       .get(now, endMs, startMs, endMs, startMs) as { total: number }
+
+    const bgEntertainment = this.db
+      .prepare(
+        `
+      SELECT COALESCE(SUM(
+        MIN(COALESCE(ended_at, ?), ?) - MAX(started_at, ?)
+      ), 0) as total FROM background_entertainment_sessions
+      WHERE started_at < ? AND (ended_at > ? OR ended_at IS NULL)
+    `,
+      )
+      .get(now, endMs, startMs, endMs, startMs) as { total: number }
+
+    const entertainment = { total: fgEntertainment.total + bgEntertainment.total }
 
     const ai = this.db
       .prepare(
@@ -104,7 +117,7 @@ class QueryEngine {
 
   getHourlyActivity(startMs: number, endMs: number): HourlyActivity[] {
     const now = Date.now()
-    // Sessions are split at hour boundaries by the tracker, so simple grouping works
+    // Sessions are split at hour boundaries on insert, so simple grouping works
     return this.db
       .prepare(
         `
@@ -240,23 +253,33 @@ class QueryEngine {
 
   getEntertainmentTimeByDay(startMs: number, endMs: number): EntertainmentTimeRecord[] {
     const now = Date.now()
-    // Sessions are split at hour boundaries, so simple day grouping works
+    // Combine foreground entertainment (from activity_sessions) with background
+    // entertainment (from background_entertainment_sessions) into one result set
     return this.db
       .prepare(
         `
-      SELECT
-        app_name,
-        strftime('%Y-%m-%d', started_at / 1000, 'unixepoch', 'localtime') as date,
-        SUM(MIN(COALESCE(ended_at, ?), ?) - MAX(started_at, ?)) as total_ms
-      FROM activity_sessions
-      WHERE started_at < ? AND (ended_at > ? OR ended_at IS NULL)
-        AND category = 'Entertainment' AND is_idle = 0
+      SELECT app_name, date, SUM(total_ms) as total_ms FROM (
+        SELECT
+          app_name,
+          strftime('%Y-%m-%d', started_at / 1000, 'unixepoch', 'localtime') as date,
+          MIN(COALESCE(ended_at, ?), ?) - MAX(started_at, ?) as total_ms
+        FROM activity_sessions
+        WHERE started_at < ? AND (ended_at > ? OR ended_at IS NULL)
+          AND category = 'Entertainment' AND is_idle = 0
+        UNION ALL
+        SELECT
+          app_name || ' (background)' as app_name,
+          strftime('%Y-%m-%d', started_at / 1000, 'unixepoch', 'localtime') as date,
+          MIN(COALESCE(ended_at, ?), ?) - MAX(started_at, ?) as total_ms
+        FROM background_entertainment_sessions
+        WHERE started_at < ? AND (ended_at > ? OR ended_at IS NULL)
+      )
       GROUP BY date, app_name
       HAVING total_ms >= 60000
       ORDER BY date ASC
     `,
       )
-      .all(now, endMs, startMs, endMs, startMs) as EntertainmentTimeRecord[]
+      .all(now, endMs, startMs, endMs, startMs, now, endMs, startMs, endMs, startMs) as EntertainmentTimeRecord[]
   }
 
   getAiTimeByDay(startMs: number, endMs: number): AiTimeRecord[] {

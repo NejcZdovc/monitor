@@ -18,7 +18,7 @@ class AppDatabase {
     this.db.exec('CREATE TABLE IF NOT EXISTS schema_version (version INTEGER PRIMARY KEY)')
     const row = this.db.prepare('SELECT MAX(version) as v FROM schema_version').get() as { v: number } | undefined
     const currentVersion = row?.v || 0
-    const migrations = [this._v1.bind(this)]
+    const migrations = [this._v1.bind(this), this._v2.bind(this)]
     for (let i = currentVersion; i < migrations.length; i++) {
       migrations[i]()
       this.db.prepare('INSERT INTO schema_version (version) VALUES (?)').run(i + 1)
@@ -74,6 +74,19 @@ class AppDatabase {
     `)
   }
 
+  _v2() {
+    this.db.exec(`
+      CREATE TABLE background_entertainment_sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        app_name TEXT NOT NULL,
+        started_at INTEGER NOT NULL,
+        ended_at INTEGER,
+        duration_ms INTEGER
+      );
+      CREATE INDEX idx_bg_entertainment_started ON background_entertainment_sessions(started_at);
+    `)
+  }
+
   cleanupOrphanedSessions() {
     const now = Date.now()
     const activityResult = this.db
@@ -97,6 +110,17 @@ class AppDatabase {
       .run(now - 30000)
     if (callResult.changes > 0) {
       console.log(`Cleaned up ${callResult.changes} orphaned call sessions`)
+    }
+    const bgResult = this.db
+      .prepare(
+        `
+      UPDATE background_entertainment_sessions SET ended_at = started_at + 10000, duration_ms = 10000
+      WHERE ended_at IS NULL AND started_at < ?
+    `,
+      )
+      .run(now - 30000)
+    if (bgResult.changes > 0) {
+      console.log(`Cleaned up ${bgResult.changes} orphaned background entertainment sessions`)
     }
   }
 

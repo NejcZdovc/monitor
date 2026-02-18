@@ -16,6 +16,7 @@ const ENTERTAINMENT_COLORS: Record<string, string> = {
   Plex: '#EBAF00',
   Photos: '#FFFFFF',
   'QuickTime Player': '#2997FF',
+  'YouTube (background)': '#CC0000',
 }
 
 export class EntertainmentChart {
