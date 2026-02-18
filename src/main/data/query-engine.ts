@@ -151,11 +151,11 @@ class QueryEngine {
     `)
 
     this._entertainmentTimeStmt = db.prepare(`
-      SELECT app_name, date, SUM(total_ms) as total_ms FROM (
+      SELECT app_name, date, SUM(ms) as total_ms FROM (
         SELECT
           app_name,
           strftime('%Y-%m-%d', started_at / 1000, 'unixepoch', 'localtime') as date,
-          MIN(COALESCE(ended_at, ?), ?) - MAX(started_at, ?) as total_ms
+          MIN(COALESCE(ended_at, ?), ?) - MAX(started_at, ?) as ms
         FROM activity_sessions
         WHERE started_at < ? AND (ended_at > ? OR ended_at IS NULL)
           AND category = 'Entertainment' AND is_idle = 0
@@ -163,7 +163,7 @@ class QueryEngine {
         SELECT
           app_name || ' (background)' as app_name,
           strftime('%Y-%m-%d', started_at / 1000, 'unixepoch', 'localtime') as date,
-          MIN(COALESCE(ended_at, ?), ?) - MAX(started_at, ?) as total_ms
+          MIN(COALESCE(ended_at, ?), ?) - MAX(started_at, ?) as ms
         FROM background_entertainment_sessions
         WHERE started_at < ? AND (ended_at > ? OR ended_at IS NULL)
       )
