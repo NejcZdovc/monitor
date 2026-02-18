@@ -138,7 +138,7 @@ class WindowTracker {
     if (!this.currentSession) return
     const now = endTime || Date.now()
     this._splitSessionAtHourBoundaries(Math.floor(now / 3600000))
-    this.activityStore.update(this.currentSession.id, now)
+    this.activityStore.update(this.currentSession.id, now, this.currentSession.startedAt)
     this.currentSession = null
   }
 
@@ -155,7 +155,7 @@ class WindowTracker {
     const { appName, windowTitle, category } = this.currentSession
     for (let h = sessionHour + 1; h <= targetHour; h++) {
       const boundary = h * 3600000
-      this.activityStore.update(this.currentSession.id, boundary)
+      this.activityStore.update(this.currentSession.id, boundary, this.currentSession.startedAt)
       this.currentSession = {
         id: 0,
         appName,
