@@ -47,7 +47,7 @@ export class ActiveTimeChart {
       const cursor = new Date(startMs)
       cursor.setHours(0, 0, 0, 0)
       while (cursor < rangeEnd) {
-        const key = cursor.toISOString().slice(0, 10)
+        const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`
         data.push({ date: key, active_ms: dateMap.get(key) || 0 })
         cursor.setDate(cursor.getDate() + 1)
       }
