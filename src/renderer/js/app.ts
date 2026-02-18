@@ -53,11 +53,18 @@ class Dashboard {
     this._currentRange = getToday()
     this.onRangeChange(this._currentRange)
 
-    // Auto-refresh every 30 seconds, recalculating dynamic ranges on date change
+    // Auto-refresh every 30 seconds, but only when the dashboard window is focused
     setInterval(() => {
+      if (!document.hasFocus()) return
       const range = this._getFreshRange()
       this.onRangeChange(range)
     }, 30000)
+
+    // Refresh immediately when the window regains focus
+    window.addEventListener('focus', () => {
+      const range = this._getFreshRange()
+      this.onRangeChange(range)
+    })
   }
 
   async toggleTracking(): Promise<void> {
