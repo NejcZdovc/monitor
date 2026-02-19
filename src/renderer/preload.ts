@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('monitor', {
     ipcRenderer.invoke('get-entertainment-time', startMs, endMs),
   getAiTime: (startMs: number, endMs: number) => ipcRenderer.invoke('get-ai-time', startMs, endMs),
   getProjectBreakdown: (startMs: number, endMs: number) => ipcRenderer.invoke('get-project-breakdown', startMs, endMs),
+  getAppsByHour: (hourMs: number) => ipcRenderer.invoke('get-apps-by-hour', hourMs),
   getTrackingStatus: () => ipcRenderer.invoke('get-tracking-status'),
   toggleTracking: () => ipcRenderer.invoke('toggle-tracking'),
   isDev: () => ipcRenderer.invoke('is-dev'),

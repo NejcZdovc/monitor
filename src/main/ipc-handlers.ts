@@ -51,6 +51,10 @@ function registerIpcHandlers(queryEngine: QueryEngine, trackerManager: TrackerMa
     return queryEngine.getProjectBreakdown(startMs, endMs)
   })
 
+  ipcMain.handle('get-apps-by-hour', (_event, hourMs: number) => {
+    return queryEngine.getAppsByHour(hourMs)
+  })
+
   ipcMain.handle('get-tracking-status', () => {
     return { isTracking: trackerManager.isTracking }
   })

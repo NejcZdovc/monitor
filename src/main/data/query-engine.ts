@@ -9,6 +9,7 @@ import type {
   DailyActivity,
   EntertainmentTimeRecord,
   HourlyActivity,
+  HourlyAppBreakdown,
   InputRecord,
   ProjectBreakdown,
   SummaryTotals,
@@ -34,6 +35,7 @@ class QueryEngine {
   _entertainmentTimeStmt: Statement
   _aiTimeStmt: Statement
   _projectStmt: Statement
+  _appsByHourStmt: Statement
 
   constructor(db: Database.Database) {
     this.db = db
@@ -194,6 +196,16 @@ class QueryEngine {
       GROUP BY app_name, window_title
       HAVING total_ms >= 60000
     `)
+
+    this._appsByHourStmt = db.prepare(`
+      SELECT app_name, category,
+        SUM(MIN(COALESCE(ended_at, ?), ?) - MAX(started_at, ?)) as total_ms
+      FROM activity_sessions
+      WHERE started_at < ? AND (ended_at > ? OR ended_at IS NULL) AND is_idle = 0
+      GROUP BY app_name
+      HAVING total_ms >= 10000
+      ORDER BY total_ms DESC
+    `)
   }
 
   getSummaryTotals(startMs: number, endMs: number): SummaryTotals {
@@ -299,6 +311,11 @@ class QueryEngine {
       .map(([project, total_ms]) => ({ project, total_ms }))
       .sort((a, b) => b.total_ms - a.total_ms)
       .slice(0, 10)
+  }
+  getAppsByHour(hourMs: number): HourlyAppBreakdown[] {
+    const now = Date.now()
+    const endMs = hourMs + 3600000
+    return this._appsByHourStmt.all(now, endMs, hourMs, endMs, hourMs) as HourlyAppBreakdown[]
   }
 }
 

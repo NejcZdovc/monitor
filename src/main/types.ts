@@ -63,6 +63,12 @@ export interface ProjectBreakdown {
   total_ms: number
 }
 
+export interface HourlyAppBreakdown {
+  app_name: string
+  category: string
+  total_ms: number
+}
+
 export interface ActivitySession {
   appName: string
   windowTitle: string

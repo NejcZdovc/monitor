@@ -43,6 +43,10 @@ class Dashboard {
     this.entertainmentChart = new EntertainmentChart('chart-entertainment')
     this.aiChart = new AiChart('chart-ai')
 
+    this.activeTimeChart.onHourClick = (hourMs, activeMs, label) => {
+      this.categoryDetail.openHour(label, activeMs, hourMs)
+    }
+
     this.activeTimeChart.onBarClick = (dateStr) => {
       this._parentRange = this._currentRange
       const dayRange = getDayRange(dateStr)

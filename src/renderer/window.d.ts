@@ -58,6 +58,12 @@ export interface ProjectBreakdown {
   total_ms: number
 }
 
+export interface HourlyAppBreakdown {
+  app_name: string
+  category: string
+  total_ms: number
+}
+
 export interface TrayStats extends SummaryTotals {
   topApp: { app_name: string; total_ms: number } | null
   isTracking: boolean
@@ -75,6 +81,7 @@ export interface MonitorAPI {
   getEntertainmentTime(startMs: number, endMs: number): Promise<EntertainmentTimeRecord[]>
   getAiTime(startMs: number, endMs: number): Promise<AiTimeRecord[]>
   getProjectBreakdown(startMs: number, endMs: number): Promise<ProjectBreakdown[]>
+  getAppsByHour(hourMs: number): Promise<HourlyAppBreakdown[]>
   getTrackingStatus(): Promise<{ isTracking: boolean }>
   toggleTracking(): Promise<{ isTracking: boolean }>
   isDev(): Promise<boolean>

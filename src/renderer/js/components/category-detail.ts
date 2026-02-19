@@ -68,6 +68,45 @@ export class CategoryDetail {
     }
   }
 
+  async openHour(hourLabel: string, totalMs: number, hourMs: number): Promise<void> {
+    this.titleEl.textContent = hourLabel
+    this.colorDot.style.background = '#569cd6'
+    this.totalEl.textContent = formatDuration(totalMs)
+    this.appList.innerHTML = ''
+
+    this.overlay.classList.remove('hidden')
+
+    try {
+      const apps = await window.monitor.getAppsByHour(hourMs)
+
+      if (!apps.length) {
+        this.appList.innerHTML = '<div class="modal-empty">No apps found for this hour</div>'
+        return
+      }
+
+      const maxMs = apps[0].total_ms
+
+      apps.forEach((app, i) => {
+        const pct = maxMs > 0 ? (app.total_ms / maxMs) * 100 : 0
+        const item = document.createElement('div')
+        item.className = 'modal-app-item'
+        item.innerHTML = `
+          <span class="modal-app-rank">${i + 1}</span>
+          <div class="modal-app-info">
+            <div class="modal-app-name">${this._escapeHtml(app.app_name)}</div>
+            <div class="modal-app-bar-container">
+              <div class="modal-app-bar" style="width: ${pct}%; background: #569cd6;"></div>
+            </div>
+          </div>
+          <span class="modal-app-duration">${formatDuration(app.total_ms)}</span>
+        `
+        this.appList.appendChild(item)
+      })
+    } catch (_err) {
+      this.appList.innerHTML = '<div class="modal-empty">Failed to load app details</div>'
+    }
+  }
+
   close(): void {
     this.overlay.classList.add('hidden')
   }

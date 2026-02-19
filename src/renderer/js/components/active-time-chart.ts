@@ -7,11 +7,13 @@ export class ActiveTimeChart {
   canvas: HTMLCanvasElement
   chart: ChartType | null
   onBarClick: ((dateStr: string) => void) | null
+  onHourClick: ((hourMs: number, activeMs: number, label: string) => void) | null
 
   constructor(canvasId: string) {
     this.canvas = document.getElementById(canvasId) as HTMLCanvasElement
     this.chart = null
     this.onBarClick = null
+    this.onHourClick = null
   }
 
   async render(startMs: number, endMs: number, rangeType: string): Promise<void> {
@@ -90,8 +92,9 @@ export class ActiveTimeChart {
       },
     }
 
-    const isDrillable = rangeType !== 'today'
+    const isHourly = rangeType === 'today'
     const dateStrings = data.map((d) => d.date ?? '')
+    const hourValues = data.map((d) => d.hour ?? 0)
 
     this.chart = new Chart(this.canvas, {
       type: 'bar',
@@ -135,23 +138,24 @@ export class ActiveTimeChart {
             },
           },
         },
-        ...(isDrillable
-          ? {
-              onClick: (_event, elements) => {
-                if (elements.length > 0 && this.onBarClick) {
-                  const index = elements[0].index
-                  const dateStr = dateStrings[index]
-                  if (dateStr) this.onBarClick(dateStr)
-                }
-              },
-              onHover: (event, elements) => {
-                const target = event.native?.target as HTMLElement | undefined
-                if (target) {
-                  target.style.cursor = elements.length > 0 ? 'pointer' : 'default'
-                }
-              },
-            }
-          : {}),
+        onClick: (_event, elements) => {
+          if (elements.length === 0) return
+          const index = elements[0].index
+          if (isHourly && this.onHourClick) {
+            const hourMs = hourValues[index]
+            const activeMs = data[index].active_ms
+            if (hourMs && activeMs > 0) this.onHourClick(hourMs, activeMs, labels[index])
+          } else if (!isHourly && this.onBarClick) {
+            const dateStr = dateStrings[index]
+            if (dateStr) this.onBarClick(dateStr)
+          }
+        },
+        onHover: (event, elements) => {
+          const target = event.native?.target as HTMLElement | undefined
+          if (target) {
+            target.style.cursor = elements.length > 0 ? 'pointer' : 'default'
+          }
+        },
       },
       plugins: [barValuePlugin],
     })
