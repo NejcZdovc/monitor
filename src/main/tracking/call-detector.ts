@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process'
+import { CALL_CHECK_INTERVAL_MS, PGREP_TIMEOUT_MS, SAFETY_TIMEOUT_MS } from '../constants'
 import type { CallStore } from '../data/call-store'
-import type { CallSessionRef } from '../types'
+import { SessionLifecycle } from './session-lifecycle'
 
 // CptHost = Zoom's audio process (only runs during active calls)
 // Teams = Microsoft Teams app
@@ -14,13 +15,13 @@ const CALL_PROCESSES = [
 class CallDetector {
   callStore: CallStore
   checkInterval: number
-  activeCalls: Map<string, CallSessionRef>
+  activeCalls: Map<string, SessionLifecycle>
   timer: ReturnType<typeof setInterval> | null
   checking: boolean
 
   constructor(callStore: CallStore) {
     this.callStore = callStore
-    this.checkInterval = 15000
+    this.checkInterval = CALL_CHECK_INTERVAL_MS
     this.activeCalls = new Map()
     this.timer = null
     this.checking = false
@@ -35,7 +36,9 @@ class CallDetector {
     this.checking = true
 
     // Split any active call sessions at hour boundaries
-    this._splitAtHourBoundary()
+    for (const session of this.activeCalls.values()) {
+      session.splitAtHourBoundary()
+    }
 
     let pending = CALL_PROCESSES.length
     const runningCalls = new Set<string>()
@@ -48,22 +51,16 @@ class CallDetector {
     // Safety timeout: reset flag even if a pgrep callback never fires
     const safetyTimer = setTimeout(() => {
       this.checking = false
-    }, 10000)
+    }, SAFETY_TIMEOUT_MS)
 
     for (const app of CALL_PROCESSES) {
-      execFile('pgrep', ['-x', app.process], { timeout: 5000 }, (err) => {
+      execFile('pgrep', ['-x', app.process], { timeout: PGREP_TIMEOUT_MS }, (err) => {
         if (!err) {
           runningCalls.add(app.name)
 
           if (!this.activeCalls.has(app.name)) {
-            const now = Date.now()
-            const session: CallSessionRef = { id: 0, appName: app.name, startedAt: now }
-            session.id = this.callStore.insert({
-              appName: app.name,
-              startedAt: now,
-              endedAt: null,
-              durationMs: null,
-            })
+            const session = new SessionLifecycle(this.callStore)
+            session.open(app.name)
             this.activeCalls.set(app.name, session)
           }
         }
@@ -74,36 +71,13 @@ class CallDetector {
           // All checks done -- end calls that are no longer running
           for (const [appName, session] of this.activeCalls) {
             if (!runningCalls.has(appName)) {
-              const now = Date.now()
-              this.callStore.update(session.id, now, session.startedAt)
+              session.close()
               this.activeCalls.delete(appName)
             }
           }
           this.checking = false
         }
       })
-    }
-  }
-
-  _splitAtHourBoundary() {
-    const currentHour = Math.floor(Date.now() / 3600000)
-    for (const [appName, session] of this.activeCalls) {
-      const sessionHour = Math.floor(session.startedAt / 3600000)
-      if (currentHour <= sessionHour) continue
-
-      let current = session
-      for (let h = sessionHour + 1; h <= currentHour; h++) {
-        const boundary = h * 3600000
-        this.callStore.update(current.id, boundary, current.startedAt)
-        current = { id: 0, appName: current.appName, startedAt: boundary }
-        current.id = this.callStore.insert({
-          appName: current.appName,
-          startedAt: boundary,
-          endedAt: null,
-          durationMs: null,
-        })
-      }
-      this.activeCalls.set(appName, current)
     }
   }
 
@@ -114,10 +88,8 @@ class CallDetector {
   stop() {
     if (this.timer) clearInterval(this.timer)
     this.timer = null
-    this._splitAtHourBoundary()
-    const now = Date.now()
     for (const [, session] of this.activeCalls) {
-      this.callStore.update(session.id, now, session.startedAt)
+      session.close()
     }
     this.activeCalls.clear()
   }

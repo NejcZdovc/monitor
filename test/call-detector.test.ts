@@ -14,16 +14,9 @@ const pgrepCallbacks: Array<{
 }> = []
 
 jest.mock('node:child_process', () => ({
-  execFile: jest.fn(
-    (
-      _cmd: string,
-      args: string[],
-      _opts: object,
-      cb: (err: Error | null, stdout: string) => void,
-    ) => {
-      pgrepCallbacks.push({ process: args[1], cb })
-    },
-  ),
+  execFile: jest.fn((_cmd: string, args: string[], _opts: object, cb: (err: Error | null, stdout: string) => void) => {
+    pgrepCallbacks.push({ process: args[1], cb })
+  }),
 }))
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -70,6 +63,7 @@ function resolvePgrep(running: Set<string>) {
 
 // ── Import after mocks ──────────────────────────────────────────────────────
 
+import type { CallStore } from '../src/main/data/call-store'
 import { CallDetector } from '../src/main/tracking/call-detector'
 
 // ── Test Suite ──────────────────────────────────────────────────────────────
@@ -83,7 +77,7 @@ describe('CallDetector', () => {
   beforeEach(() => {
     jest.useFakeTimers()
     callStore = createMockCallStore()
-    detector = new CallDetector(callStore)
+    detector = new CallDetector(callStore as unknown as CallStore)
     pgrepCallbacks.length = 0
 
     // Mock Date.now — start at 14:30 UTC
@@ -116,6 +110,7 @@ describe('CallDetector', () => {
         }),
       )
       expect(detector.activeCalls.has('Zoom')).toBe(true)
+      expect(detector.activeCalls.get('Zoom')!.isActive()).toBe(true)
     })
 
     test('starts a Teams session when Teams process is running', () => {
@@ -279,7 +274,7 @@ describe('CallDetector', () => {
 
       // activeCalls now points to the new session
       const activeSession = detector.activeCalls.get('Zoom')!
-      expect(activeSession.startedAt).toBe(hour15)
+      expect(activeSession.current!.startedAt).toBe(hour15)
     })
 
     test('splits at multiple hour boundaries for long calls', () => {
@@ -312,7 +307,7 @@ describe('CallDetector', () => {
 
       // activeCalls points to the latest session
       const activeSession = detector.activeCalls.get('Zoom')!
-      expect(activeSession.startedAt).toBe(hour16)
+      expect(activeSession.current!.startedAt).toBe(hour16)
     })
 
     test('no split when call stays within same hour', () => {
@@ -396,11 +391,13 @@ describe('CallDetector', () => {
     })
   })
 
-  // ── _splitAtHourBoundary directly ────────────────────────────────────
+  // ── Session splitting via SessionLifecycle ──────────────────────────
 
-  describe('_splitAtHourBoundary', () => {
-    test('does nothing when no active calls', () => {
-      detector._splitAtHourBoundary()
+  describe('session splitting via SessionLifecycle', () => {
+    test('splitting does nothing when no active calls', () => {
+      // Trigger _check with no active calls — no splitting occurs
+      detector._check()
+      resolvePgrep(new Set())
 
       expect(callStore.insert).toHaveBeenCalledTimes(0)
       expect(callStore.update).toHaveBeenCalledTimes(0)
@@ -410,12 +407,15 @@ describe('CallDetector', () => {
       const hour14 = Math.floor(currentTime / 3600000) * 3600000
       currentTime = hour14 + 10 * 60000
 
-      // Manually set an active call
-      detector.activeCalls.set('Zoom', { id: 1, appName: 'Zoom', startedAt: currentTime })
+      // Manually set an active call via SessionLifecycle
+      const { SessionLifecycle } = require('../src/main/tracking/session-lifecycle')
+      const session = new SessionLifecycle(callStore)
+      session.current = { id: 1, appName: 'Zoom', startedAt: currentTime }
+      detector.activeCalls.set('Zoom', session)
 
-      // Still in same hour
+      // Still in same hour — trigger splitting via _check
       currentTime = hour14 + 30 * 60000
-      detector._splitAtHourBoundary()
+      session.splitAtHourBoundary()
 
       expect(callStore.insert).toHaveBeenCalledTimes(0)
       expect(callStore.update).toHaveBeenCalledTimes(0)
@@ -426,10 +426,14 @@ describe('CallDetector', () => {
       const hour15 = hour14 + 3600000
       const startTime = hour14 + 45 * 60000
 
-      detector.activeCalls.set('Zoom', { id: 1, appName: 'Zoom', startedAt: startTime })
+      // Manually set an active call via SessionLifecycle
+      const { SessionLifecycle } = require('../src/main/tracking/session-lifecycle')
+      const session = new SessionLifecycle(callStore)
+      session.current = { id: 1, appName: 'Zoom', startedAt: startTime }
+      detector.activeCalls.set('Zoom', session)
 
       currentTime = hour15 + 10 * 60000
-      detector._splitAtHourBoundary()
+      session.splitAtHourBoundary()
 
       expect(callStore.update).toHaveBeenCalledTimes(1)
       expect(callStore.updates[0]).toEqual(
@@ -443,10 +447,10 @@ describe('CallDetector', () => {
       expect(callStore.inserts[0].startedAt).toBe(hour15)
       expect(callStore.inserts[0].appName).toBe('Zoom')
 
-      // activeCalls updated to new session
+      // Session updated to new segment
       const active = detector.activeCalls.get('Zoom')!
-      expect(active.startedAt).toBe(hour15)
-      expect(active.id).toBe(callStore.inserts[0].id)
+      expect(active.current!.startedAt).toBe(hour15)
+      expect(active.current!.id).toBe(callStore.inserts[0].id)
     })
   })
 

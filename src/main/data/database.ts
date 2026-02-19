@@ -1,6 +1,11 @@
 import path from 'node:path'
 import Database from 'better-sqlite3'
 import { app } from 'electron'
+import {
+  ORPHANED_ACTIVITY_DURATION_MS,
+  ORPHANED_BG_ENTERTAINMENT_DURATION_MS,
+  ORPHANED_SESSION_WINDOW_MS,
+} from '../constants'
 
 class AppDatabase {
   db: Database.Database
@@ -96,36 +101,37 @@ class AppDatabase {
 
   cleanupOrphanedSessions() {
     const now = Date.now()
+    const cutoff = now - ORPHANED_SESSION_WINDOW_MS
     const activityResult = this.db
       .prepare(
         `
-      UPDATE activity_sessions SET ended_at = started_at + 5000, duration_ms = 5000
+      UPDATE activity_sessions SET ended_at = started_at + ${ORPHANED_ACTIVITY_DURATION_MS}, duration_ms = ${ORPHANED_ACTIVITY_DURATION_MS}
       WHERE ended_at IS NULL AND started_at < ?
     `,
       )
-      .run(now - 30000)
+      .run(cutoff)
     if (activityResult.changes > 0) {
       console.log(`Cleaned up ${activityResult.changes} orphaned activity sessions`)
     }
     const callResult = this.db
       .prepare(
         `
-      UPDATE call_sessions SET ended_at = started_at + 5000, duration_ms = 5000
+      UPDATE call_sessions SET ended_at = started_at + ${ORPHANED_ACTIVITY_DURATION_MS}, duration_ms = ${ORPHANED_ACTIVITY_DURATION_MS}
       WHERE ended_at IS NULL AND started_at < ?
     `,
       )
-      .run(now - 30000)
+      .run(cutoff)
     if (callResult.changes > 0) {
       console.log(`Cleaned up ${callResult.changes} orphaned call sessions`)
     }
     const bgResult = this.db
       .prepare(
         `
-      UPDATE background_entertainment_sessions SET ended_at = started_at + 10000, duration_ms = 10000
+      UPDATE background_entertainment_sessions SET ended_at = started_at + ${ORPHANED_BG_ENTERTAINMENT_DURATION_MS}, duration_ms = ${ORPHANED_BG_ENTERTAINMENT_DURATION_MS}
       WHERE ended_at IS NULL AND started_at < ?
     `,
       )
-      .run(now - 30000)
+      .run(cutoff)
     if (bgResult.changes > 0) {
       console.log(`Cleaned up ${bgResult.changes} orphaned background entertainment sessions`)
     }

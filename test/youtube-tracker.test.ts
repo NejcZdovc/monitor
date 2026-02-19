@@ -8,11 +8,9 @@
 let execFileCallback: ((err: Error | null, stdout: string) => void) | null = null
 
 jest.mock('node:child_process', () => ({
-  execFile: jest.fn(
-    (_cmd: string, _args: string[], _opts: object, cb: (err: Error | null, stdout: string) => void) => {
-      execFileCallback = cb
-    },
-  ),
+  execFile: jest.fn((_cmd: string, _args: string[], _opts: object, cb: (err: Error | null, stdout: string) => void) => {
+    execFileCallback = cb
+  }),
 }))
 
 jest.mock('node:fs', () => ({
@@ -69,6 +67,7 @@ function simulateError() {
 
 // ── Import after mocks ──────────────────────────────────────────────────────
 
+import type { BackgroundEntertainmentStore } from '../src/main/data/background-entertainment-store'
 import { YouTubeTracker } from '../src/main/tracking/youtube-tracker'
 
 // ── Test Suite ──────────────────────────────────────────────────────────────
@@ -82,7 +81,7 @@ describe('YouTubeTracker', () => {
   beforeEach(() => {
     jest.useFakeTimers()
     store = createMockBgStore()
-    tracker = new YouTubeTracker(store)
+    tracker = new YouTubeTracker(store as unknown as BackgroundEntertainmentStore)
     execFileCallback = null
 
     _realDateNow = Date.now
@@ -113,7 +112,7 @@ describe('YouTubeTracker', () => {
           durationMs: null,
         }),
       )
-      expect(tracker.currentSession).not.toBeNull()
+      expect(tracker.session.isActive()).toBe(true)
     })
 
     test('does not create session when YouTube is not detected', () => {
@@ -121,7 +120,7 @@ describe('YouTubeTracker', () => {
       simulateNoYouTube()
 
       expect(store.insert).not.toHaveBeenCalled()
-      expect(tracker.currentSession).toBeNull()
+      expect(tracker.session.isActive()).toBe(false)
     })
 
     test('does not re-create session on subsequent detections', () => {
@@ -150,7 +149,7 @@ describe('YouTubeTracker', () => {
           endedAt: currentTime,
         }),
       )
-      expect(tracker.currentSession).toBeNull()
+      expect(tracker.session.isActive()).toBe(false)
     })
 
     test('can start a new session after one ends', () => {
@@ -180,7 +179,7 @@ describe('YouTubeTracker', () => {
       simulateError()
 
       expect(store.insert).not.toHaveBeenCalled()
-      expect(tracker.currentSession).toBeNull()
+      expect(tracker.session.isActive()).toBe(false)
     })
 
     test('ends session on error if one is active', () => {
@@ -192,7 +191,7 @@ describe('YouTubeTracker', () => {
       simulateError()
 
       expect(store.update).toHaveBeenCalledTimes(1)
-      expect(tracker.currentSession).toBeNull()
+      expect(tracker.session.isActive()).toBe(false)
     })
   })
 
@@ -296,11 +295,11 @@ describe('YouTubeTracker', () => {
     })
   })
 
-  // ── _splitAtHourBoundary directly ────────────────────────────────────
+  // ── splitAtHourBoundary via session lifecycle ───────────────────────
 
-  describe('_splitAtHourBoundary', () => {
+  describe('session splitAtHourBoundary', () => {
     test('does nothing when no current session', () => {
-      tracker._splitAtHourBoundary()
+      tracker.session.splitAtHourBoundary()
       expect(store.insert).not.toHaveBeenCalled()
       expect(store.update).not.toHaveBeenCalled()
     })
@@ -308,10 +307,10 @@ describe('YouTubeTracker', () => {
     test('does nothing when still in same hour', () => {
       const hour14 = Math.floor(currentTime / 3600000) * 3600000
       currentTime = hour14 + 10 * 60000
-      tracker.currentSession = { id: 1, startedAt: currentTime }
+      tracker.session.current = { id: 1, appName: 'YouTube', startedAt: currentTime }
 
       currentTime = hour14 + 30 * 60000
-      tracker._splitAtHourBoundary()
+      tracker.session.splitAtHourBoundary()
 
       expect(store.insert).not.toHaveBeenCalled()
     })
@@ -329,7 +328,7 @@ describe('YouTubeTracker', () => {
 
       expect(store.update).toHaveBeenCalledTimes(1)
       expect(store.updates[0].endedAt).toBe(currentTime)
-      expect(tracker.currentSession).toBeNull()
+      expect(tracker.session.isActive()).toBe(false)
     })
 
     test('stop splits at hour boundary before closing', () => {

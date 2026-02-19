@@ -48,17 +48,6 @@ function createMockActivityStore() {
   }
 }
 
-function createMockCallStore() {
-  return {
-    insert: jest.fn(() => 1),
-    update: jest.fn(),
-  }
-}
-
-function createMockInputStore() {
-  return { flush: jest.fn(), insert: jest.fn(), start: jest.fn(), stop: jest.fn() }
-}
-
 // ── Import ───────────────────────────────────────────────────────────────────
 
 // We test _handleIdleEnd indirectly by accessing it. Since TrackerManager

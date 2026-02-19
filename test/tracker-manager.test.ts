@@ -86,7 +86,13 @@ function createMockYouTubeTracker() {
 }
 
 // Import the class — we'll manually wire up its internals
+import type { ActivityStore } from '../src/main/data/activity-store'
+import type { CallDetector } from '../src/main/tracking/call-detector'
+import type { IdleDetector } from '../src/main/tracking/idle-detector'
+import type { InputTracker } from '../src/main/tracking/input-tracker'
 import { TrackerManager } from '../src/main/tracking/tracker-manager'
+import type { WindowTracker } from '../src/main/tracking/window-tracker'
+import type { YouTubeTracker } from '../src/main/tracking/youtube-tracker'
 
 // ── Test Suite ──────────────────────────────────────────────────────────────
 
@@ -116,12 +122,12 @@ describe('TrackerManager', () => {
     // Create a TrackerManager with a dummy database, then override internals
     // We can't construct with a real DB, so we use Object.create + manual setup
     manager = Object.create(TrackerManager.prototype)
-    manager.activityStore = activityStore
-    manager.windowTracker = windowTracker
-    manager.inputTracker = inputTracker
-    manager.callDetector = callDetector
-    manager.idleDetector = idleDetector
-    manager.youtubeTracker = youtubeTracker
+    manager.activityStore = activityStore as unknown as ActivityStore
+    manager.windowTracker = windowTracker as unknown as WindowTracker
+    manager.inputTracker = inputTracker as unknown as InputTracker
+    manager.callDetector = callDetector as unknown as CallDetector
+    manager.idleDetector = idleDetector as unknown as IdleDetector
+    manager.youtubeTracker = youtubeTracker as unknown as YouTubeTracker
     manager.isTracking = false
   })
 

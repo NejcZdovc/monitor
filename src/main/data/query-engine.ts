@@ -1,6 +1,7 @@
 import type Database from 'better-sqlite3'
 import type { Statement } from 'better-sqlite3'
 import { extractProjectName } from '../categories'
+import { ONE_HOUR_MS } from '../constants'
 import type {
   AiTimeRecord,
   AppBreakdown,
@@ -314,7 +315,7 @@ class QueryEngine {
   }
   getAppsByHour(hourMs: number): HourlyAppBreakdown[] {
     const now = Date.now()
-    const endMs = hourMs + 3600000
+    const endMs = hourMs + ONE_HOUR_MS
     return this._appsByHourStmt.all(now, endMs, hourMs, endMs, hourMs) as HourlyAppBreakdown[]
   }
 }

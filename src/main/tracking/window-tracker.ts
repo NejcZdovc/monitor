@@ -3,9 +3,12 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { isFaceTimeCall, isGoogleMeet, resolveBrowserAppName, resolveCategory } from '../categories'
+import { OSASCRIPT_TIMEOUT_MS, POLL_SAFETY_TIMEOUT_MS, WINDOW_POLL_INTERVAL_MS } from '../constants'
 import type { ActivityStore } from '../data/activity-store'
 import type { CallStore } from '../data/call-store'
-import type { CallSessionRef, TrackedSession } from '../types'
+import type { TrackedSession } from '../types'
+import { getHourBoundaries, getHourNumber } from './hour-split'
+import { SessionLifecycle } from './session-lifecycle'
 
 // AppleScript to get frontmost app name and window title.
 // Only requires Accessibility permission (not Screen Recording).
@@ -31,8 +34,8 @@ class WindowTracker {
   callStore: CallStore
   pollInterval: number
   currentSession: TrackedSession | null
-  currentMeetSession: CallSessionRef | null
-  currentFaceTimeSession: CallSessionRef | null
+  meetSession: SessionLifecycle
+  faceTimeSession: SessionLifecycle
   timer: ReturnType<typeof setInterval> | null
   paused: boolean
   polling: boolean
@@ -43,10 +46,10 @@ class WindowTracker {
   constructor(activityStore: ActivityStore, callStore: CallStore) {
     this.activityStore = activityStore
     this.callStore = callStore
-    this.pollInterval = 5000
+    this.pollInterval = WINDOW_POLL_INTERVAL_MS
     this.currentSession = null
-    this.currentMeetSession = null
-    this.currentFaceTimeSession = null
+    this.meetSession = new SessionLifecycle(callStore)
+    this.faceTimeSession = new SessionLifecycle(callStore)
     this.timer = null
     this.paused = false
     this.polling = false
@@ -73,9 +76,9 @@ class WindowTracker {
     // Safety timeout: ensure polling flag is reset even if execFile callback never fires
     const safetyTimer = setTimeout(() => {
       this.polling = false
-    }, 5000)
+    }, POLL_SAFETY_TIMEOUT_MS)
 
-    execFile('osascript', [SCRIPT_PATH], { timeout: 3000 }, (err, stdout) => {
+    execFile('osascript', [SCRIPT_PATH], { timeout: OSASCRIPT_TIMEOUT_MS }, (err, stdout) => {
       clearTimeout(safetyTimer)
       this.polling = false
       if (this.paused) return
@@ -167,7 +170,7 @@ class WindowTracker {
       now = this.currentSession.startedAt
     }
 
-    this._splitSessionAtHourBoundaries(Math.floor(now / 3600000))
+    this._splitSessionAtHourBoundaries(getHourNumber(now))
     this.activityStore.update(this.currentSession.id, now, this.currentSession.startedAt)
     this.currentSession = null
     this._splitHistory = []
@@ -177,15 +180,17 @@ class WindowTracker {
    * Split the current activity session at every hour boundary between
    * its start hour and `targetHour`.  After this call `currentSession`
    * points to the slice that begins at `targetHour`.
+   *
+   * Uses getHourBoundaries from hour-split.ts for boundary computation,
+   * but keeps the _splitHistory push for the retroactive-idle undo mechanism.
    */
   _splitSessionAtHourBoundaries(targetHour: number) {
     if (!this.currentSession) return
-    const sessionHour = Math.floor(this.currentSession.startedAt / 3600000)
-    if (targetHour <= sessionHour) return
+    const boundaries = getHourBoundaries(this.currentSession.startedAt, targetHour)
+    if (boundaries.length === 0) return
 
     const { appName, windowTitle, category } = this.currentSession
-    for (let h = sessionHour + 1; h <= targetHour; h++) {
-      const boundary = h * 3600000
+    for (const boundary of boundaries) {
       this.activityStore.update(this.currentSession.id, boundary, this.currentSession.startedAt)
       // Record the closed split so it can be undone if idle provides a retroactive end time
       this._splitHistory.push({ id: this.currentSession.id, startedAt: this.currentSession.startedAt })
@@ -211,76 +216,32 @@ class WindowTracker {
   _trackGoogleMeet(appName: string, windowTitle: string) {
     const inMeet = isGoogleMeet(appName, windowTitle)
 
-    if (inMeet && !this.currentMeetSession) {
-      const now = Date.now()
-      this.currentMeetSession = { id: 0, appName: 'Google Meet', startedAt: now }
-      this.currentMeetSession.id = this.callStore.insert({
-        appName: 'Google Meet',
-        startedAt: now,
-        endedAt: null,
-        durationMs: null,
-      })
-    } else if (!inMeet && this.currentMeetSession) {
-      const now = Date.now()
-      this.callStore.update(this.currentMeetSession.id, now, this.currentMeetSession.startedAt)
-      this.currentMeetSession = null
+    if (inMeet && !this.meetSession.isActive()) {
+      this.meetSession.open('Google Meet')
+    } else if (!inMeet && this.meetSession.isActive()) {
+      this.meetSession.close()
     }
   }
 
   _trackFaceTime(appName: string) {
     const inCall = isFaceTimeCall(appName)
 
-    if (inCall && !this.currentFaceTimeSession) {
-      const now = Date.now()
-      this.currentFaceTimeSession = { id: 0, appName: 'FaceTime', startedAt: now }
-      this.currentFaceTimeSession.id = this.callStore.insert({
-        appName: 'FaceTime',
-        startedAt: now,
-        endedAt: null,
-        durationMs: null,
-      })
-    } else if (!inCall && this.currentFaceTimeSession) {
-      const now = Date.now()
-      this.callStore.update(this.currentFaceTimeSession.id, now, this.currentFaceTimeSession.startedAt)
-      this.currentFaceTimeSession = null
+    if (inCall && !this.faceTimeSession.isActive()) {
+      this.faceTimeSession.open('FaceTime')
+    } else if (!inCall && this.faceTimeSession.isActive()) {
+      this.faceTimeSession.close()
     }
-  }
-
-  _splitCallSessionAtHourBoundaries(session: CallSessionRef, targetHour: number): CallSessionRef {
-    const sessionHour = Math.floor(session.startedAt / 3600000)
-    if (targetHour <= sessionHour) return session
-
-    let current = session
-    for (let h = sessionHour + 1; h <= targetHour; h++) {
-      const boundary = h * 3600000
-      this.callStore.update(current.id, boundary, current.startedAt)
-      current = { id: 0, appName: current.appName, startedAt: boundary }
-      current.id = this.callStore.insert({
-        appName: current.appName,
-        startedAt: boundary,
-        endedAt: null,
-        durationMs: null,
-      })
-    }
-    return current
   }
 
   _splitAtHourBoundary() {
-    const now = Date.now()
-    const currentHour = Math.floor(now / 3600000)
+    const currentHour = getHourNumber(Date.now())
 
     // Split activity session at each missed hour boundary
     this._splitSessionAtHourBoundaries(currentHour)
 
-    // Split Google Meet session
-    if (this.currentMeetSession) {
-      this.currentMeetSession = this._splitCallSessionAtHourBoundaries(this.currentMeetSession, currentHour)
-    }
-
-    // Split FaceTime session
-    if (this.currentFaceTimeSession) {
-      this.currentFaceTimeSession = this._splitCallSessionAtHourBoundaries(this.currentFaceTimeSession, currentHour)
-    }
+    // Split Google Meet and FaceTime sessions
+    this.meetSession.splitAtHourBoundary()
+    this.faceTimeSession.splitAtHourBoundary()
   }
 
   pause(idleStartedAt: number) {
@@ -295,25 +256,15 @@ class WindowTracker {
   }
 
   hasActiveGoogleMeet(): boolean {
-    return this.currentMeetSession !== null || this.currentFaceTimeSession !== null
+    return this.meetSession.isActive() || this.faceTimeSession.isActive()
   }
 
   stop() {
     if (this.timer) clearInterval(this.timer)
     this.timer = null
     this._endCurrentSession()
-    const now = Date.now()
-    const currentHour = Math.floor(now / 3600000)
-    if (this.currentMeetSession) {
-      this.currentMeetSession = this._splitCallSessionAtHourBoundaries(this.currentMeetSession, currentHour)
-      this.callStore.update(this.currentMeetSession.id, now, this.currentMeetSession.startedAt)
-      this.currentMeetSession = null
-    }
-    if (this.currentFaceTimeSession) {
-      this.currentFaceTimeSession = this._splitCallSessionAtHourBoundaries(this.currentFaceTimeSession, currentHour)
-      this.callStore.update(this.currentFaceTimeSession.id, now, this.currentFaceTimeSession.startedAt)
-      this.currentFaceTimeSession = null
-    }
+    this.meetSession.close()
+    this.faceTimeSession.close()
   }
 }
 

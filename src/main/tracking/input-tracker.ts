@@ -1,5 +1,6 @@
 import path from 'node:path'
 import { Worker } from 'node:worker_threads'
+import { INPUT_FLUSH_INTERVAL_MS } from '../constants'
 import type { InputStore } from '../data/input-store'
 
 class InputTracker {
@@ -12,7 +13,7 @@ class InputTracker {
 
   constructor(inputStore: InputStore) {
     this.inputStore = inputStore
-    this.flushInterval = 60000
+    this.flushInterval = INPUT_FLUSH_INTERVAL_MS
     this.timer = null
     this.worker = null
     this.pendingKeys = 0

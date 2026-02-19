@@ -2,7 +2,9 @@ import { execFile } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { SAFETY_TIMEOUT_MS, YOUTUBE_OSASCRIPT_TIMEOUT_MS, YOUTUBE_POLL_INTERVAL_MS } from '../constants'
 import type { BackgroundEntertainmentStore } from '../data/background-entertainment-store'
+import { SessionLifecycle } from './session-lifecycle'
 
 // AppleScript that checks the ACTIVE TAB (first window) of each running browser
 // for YouTube. Only tracks YouTube when it is the currently visible tab —
@@ -33,17 +35,15 @@ const SCRIPT_PATH = path.join(os.tmpdir(), 'monitor-youtube-check.scpt')
 fs.writeFileSync(SCRIPT_PATH, APPLESCRIPT_CONTENT, 'utf8')
 
 class YouTubeTracker {
-  store: BackgroundEntertainmentStore
+  session: SessionLifecycle
   pollInterval: number
   timer: ReturnType<typeof setInterval> | null
-  currentSession: { id: number; startedAt: number } | null
   checking: boolean
 
   constructor(store: BackgroundEntertainmentStore) {
-    this.store = store
-    this.pollInterval = 10000 // 10s
+    this.session = new SessionLifecycle(store)
+    this.pollInterval = YOUTUBE_POLL_INTERVAL_MS
     this.timer = null
-    this.currentSession = null
     this.checking = false
   }
 
@@ -60,29 +60,22 @@ class YouTubeTracker {
     // Safety timeout: reset flag even if execFile callback never fires
     const safetyTimer = setTimeout(() => {
       this.checking = false
-    }, 10000)
+    }, SAFETY_TIMEOUT_MS)
 
-    execFile('osascript', [SCRIPT_PATH], { timeout: 8000 }, (err, stdout) => {
+    execFile('osascript', [SCRIPT_PATH], { timeout: YOUTUBE_OSASCRIPT_TIMEOUT_MS }, (err, stdout) => {
       clearTimeout(safetyTimer)
       this.checking = false
       try {
         const result = !err ? stdout.trim() : ''
 
         if (result) {
-          if (!this.currentSession) {
-            const now = Date.now()
-            this.currentSession = { id: 0, startedAt: now }
-            this.currentSession.id = this.store.insert({
-              appName: 'YouTube',
-              startedAt: now,
-              endedAt: null,
-              durationMs: null,
-            })
+          if (!this.session.isActive()) {
+            this.session.open('YouTube')
           } else {
-            this._splitAtHourBoundary()
+            this.session.splitAtHourBoundary()
           }
-        } else if (this.currentSession) {
-          this._endSession()
+        } else if (this.session.isActive()) {
+          this.session.close()
         }
       } catch (_e) {
         // Silently ignore
@@ -90,38 +83,10 @@ class YouTubeTracker {
     })
   }
 
-  _splitAtHourBoundary() {
-    if (!this.currentSession) return
-    const now = Date.now()
-    const currentHour = Math.floor(now / 3600000)
-    const sessionHour = Math.floor(this.currentSession.startedAt / 3600000)
-    if (currentHour <= sessionHour) return
-
-    for (let h = sessionHour + 1; h <= currentHour; h++) {
-      const boundary = h * 3600000
-      this.store.update(this.currentSession.id, boundary, this.currentSession.startedAt)
-      this.currentSession = { id: 0, startedAt: boundary }
-      this.currentSession.id = this.store.insert({
-        appName: 'YouTube',
-        startedAt: boundary,
-        endedAt: null,
-        durationMs: null,
-      })
-    }
-  }
-
-  _endSession(endTime?: number) {
-    if (!this.currentSession) return
-    const now = endTime || Date.now()
-    this._splitAtHourBoundary()
-    this.store.update(this.currentSession.id, now, this.currentSession.startedAt)
-    this.currentSession = null
-  }
-
   stop() {
     if (this.timer) clearInterval(this.timer)
     this.timer = null
-    this._endSession()
+    this.session.close()
   }
 }
 

@@ -66,6 +66,7 @@ function simulateWorkerMessage(msg: { keyCount: number; clickCount: number }) {
 
 // ── Import after mocks ──────────────────────────────────────────────────────
 
+import type { InputStore } from '../src/main/data/input-store'
 import { InputTracker } from '../src/main/tracking/input-tracker'
 
 // ── Test Suite ──────────────────────────────────────────────────────────────
@@ -85,7 +86,7 @@ describe('InputTracker', () => {
     currentTime = 1705325400000
     Date.now = jest.fn(() => currentTime)
 
-    tracker = new InputTracker(inputStore)
+    tracker = new InputTracker(inputStore as unknown as InputStore)
   })
 
   afterEach(() => {

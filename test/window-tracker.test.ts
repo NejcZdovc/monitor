@@ -104,6 +104,8 @@ function simulateError() {
 }
 
 // ── Import after mocks ──────────────────────────────────────────────────────
+import type { ActivityStore } from '../src/main/data/activity-store'
+import type { CallStore } from '../src/main/data/call-store'
 import { WindowTracker } from '../src/main/tracking/window-tracker'
 
 // ── Test Suite ──────────────────────────────────────────────────────────────
@@ -119,7 +121,7 @@ describe('WindowTracker', () => {
     jest.useFakeTimers()
     activityStore = createMockActivityStore()
     callStore = createMockCallStore()
-    tracker = new WindowTracker(activityStore, callStore)
+    tracker = new WindowTracker(activityStore as unknown as ActivityStore, callStore as unknown as CallStore)
     execFileCallback = null
 
     // Mock Date.now
@@ -585,7 +587,7 @@ describe('WindowTracker', () => {
           endedAt: null,
         }),
       )
-      expect(tracker.currentMeetSession).not.toBeNull()
+      expect(tracker.meetSession.current).not.toBeNull()
     })
 
     /**
@@ -606,7 +608,7 @@ describe('WindowTracker', () => {
           endedAt: currentTime,
         }),
       )
-      expect(tracker.currentMeetSession).toBeNull()
+      expect(tracker.meetSession.current).toBeNull()
     })
 
     /**
@@ -665,7 +667,7 @@ describe('WindowTracker', () => {
 
       expect(callStore.insert).toHaveBeenCalledTimes(1)
       expect(callStore.inserts[0].appName).toBe('FaceTime')
-      expect(tracker.currentFaceTimeSession).not.toBeNull()
+      expect(tracker.faceTimeSession.current).not.toBeNull()
     })
 
     /**
@@ -681,7 +683,7 @@ describe('WindowTracker', () => {
 
       expect(callStore.update).toHaveBeenCalledTimes(1)
       expect(callStore.updates[0].id).toBe(100)
-      expect(tracker.currentFaceTimeSession).toBeNull()
+      expect(tracker.faceTimeSession.current).toBeNull()
     })
 
     /**
@@ -769,7 +771,7 @@ describe('WindowTracker', () => {
       // Meet session closed
       expect(callStore.update).toHaveBeenCalledTimes(1)
       expect(tracker.currentSession).toBeNull()
-      expect(tracker.currentMeetSession).toBeNull()
+      expect(tracker.meetSession.current).toBeNull()
     })
 
     /**
@@ -783,7 +785,7 @@ describe('WindowTracker', () => {
       tracker.stop()
 
       expect(callStore.update).toHaveBeenCalledTimes(1)
-      expect(tracker.currentFaceTimeSession).toBeNull()
+      expect(tracker.faceTimeSession.current).toBeNull()
     })
   })
 
@@ -1109,7 +1111,7 @@ describe('WindowTracker', () => {
       tracker._poll()
       simulatePoll('Cursor', 'file.ts')
 
-      const originalId = activityStore.inserts[0].id
+      const _originalId = activityStore.inserts[0].id
 
       // Split at 13:00
       currentTime = hour13 + 5000

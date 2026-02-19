@@ -4,6 +4,7 @@ import { CallStore } from '../data/call-store'
 import type { AppDatabase } from '../data/database'
 import { InputStore } from '../data/input-store'
 import { CallDetector } from './call-detector'
+import { splitTimeRange } from './hour-split'
 import { IdleDetector } from './idle-detector'
 import { InputTracker } from './input-tracker'
 import { WindowTracker } from './window-tracker'
@@ -60,34 +61,18 @@ class TrackerManager {
 
   _handleIdleEnd(idleStartedAt: number | null, idleEndedAt: number) {
     // Record the idle period, splitting at each hour boundary
-    const start = idleStartedAt!
-    const startHour = Math.floor(start / 3600000)
-    const endHour = Math.floor(idleEndedAt / 3600000)
-
-    let cursor = start
-    for (let h = startHour + 1; h <= endHour; h++) {
-      const boundary = h * 3600000
+    const segments = splitTimeRange(idleStartedAt!, idleEndedAt)
+    for (const seg of segments) {
       this.activityStore.insert({
         appName: 'Idle',
         windowTitle: '',
         category: 'Idle',
-        startedAt: cursor,
-        endedAt: boundary,
-        durationMs: boundary - cursor,
+        startedAt: seg.startedAt,
+        endedAt: seg.endedAt,
+        durationMs: seg.durationMs,
         isIdle: true,
       })
-      cursor = boundary
     }
-    // Final segment (or only segment if no boundary crossed)
-    this.activityStore.insert({
-      appName: 'Idle',
-      windowTitle: '',
-      category: 'Idle',
-      startedAt: cursor,
-      endedAt: idleEndedAt,
-      durationMs: idleEndedAt - cursor,
-      isIdle: true,
-    })
 
     this.windowTracker.resume()
   }
