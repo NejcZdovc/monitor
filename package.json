@@ -1,7 +1,7 @@
 {
   "name": "monitor",
   "productName": "Monitor",
-  "version": "0.0.15",
+  "version": "0.0.16",
   "description": "macOS activity tracker for tracking computer usage",
   "main": ".vite/build/main.js",
   "repository": {
