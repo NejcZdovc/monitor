@@ -5,6 +5,7 @@ import type { ActivitySession } from '../types'
 class ActivityStore {
   _insertStmt: Statement
   _updateStmt: Statement
+  _deleteStmt: Statement
 
   constructor(db: Database.Database) {
     this._insertStmt = db.prepare(`
@@ -14,6 +15,7 @@ class ActivityStore {
     this._updateStmt = db.prepare(`
       UPDATE activity_sessions SET ended_at = @endedAt, duration_ms = @durationMs WHERE id = @id
     `)
+    this._deleteStmt = db.prepare(`DELETE FROM activity_sessions WHERE id = @id`)
   }
 
   insert(session: ActivitySession): number {
@@ -31,6 +33,10 @@ class ActivityStore {
 
   update(id: number, endedAt: number, startedAt: number) {
     this._updateStmt.run({ id, endedAt, durationMs: endedAt - startedAt })
+  }
+
+  delete(id: number) {
+    this._deleteStmt.run({ id })
   }
 }
 

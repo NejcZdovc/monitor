@@ -114,6 +114,7 @@ class CallDetector {
   stop() {
     if (this.timer) clearInterval(this.timer)
     this.timer = null
+    this._splitAtHourBoundary()
     const now = Date.now()
     for (const [, session] of this.activeCalls) {
       this.callStore.update(session.id, now, session.startedAt)

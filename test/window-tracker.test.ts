@@ -33,8 +33,10 @@ jest.mock('electron', () => ({
 interface MockActivityStore {
   inserts: Array<{ id: number; [key: string]: unknown }>
   updates: Array<{ id: number; endedAt: number }>
+  deletes: number[]
   insert: jest.Mock
   update: jest.Mock
+  delete: jest.Mock
 }
 
 interface MockCallStore {
@@ -49,9 +51,11 @@ function createMockActivityStore(): MockActivityStore {
   let nextId = 1
   const inserts: Array<{ id: number; [key: string]: unknown }> = []
   const updates: Array<{ id: number; endedAt: number }> = []
+  const deletes: number[] = []
   return {
     inserts,
     updates,
+    deletes,
     insert: jest.fn((session: Record<string, unknown>) => {
       const id = nextId++
       inserts.push({ id, ...session })
@@ -59,6 +63,9 @@ function createMockActivityStore(): MockActivityStore {
     }),
     update: jest.fn((id: number, endedAt: number) => {
       updates.push({ id, endedAt })
+    }),
+    delete: jest.fn((id: number) => {
+      deletes.push(id)
     }),
   }
 }
@@ -906,6 +913,267 @@ describe('WindowTracker', () => {
       // Call: 1 insert (started), 1 update (closed)
       expect(callStore.insert).toHaveBeenCalledTimes(1)
       expect(callStore.update).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  // ── Retroactive idle + split undo ──────────────────────────────────
+
+  describe('retroactive idle undoes hour-boundary splits', () => {
+    /**
+     * The idle detector computes idleStartedAt retroactively:
+     *   idleStartedAt = Date.now() - idleSeconds * 1000
+     * Between the actual idle start and detection (~5 min), the window tracker
+     * may have proactively split the session at an hour boundary. When pause()
+     * is called with a retroactive timestamp before the split, the split must
+     * be undone to avoid negative durations.
+     *
+     * Bug reproduction from real DB data:
+     *   13:59:32 - Brave session starts (id=4578)
+     *   13:59:30 - User actually goes idle (retroactive)
+     *   14:00:05 - Poll splits at 14:00:00 → session 4579 (startedAt=14:00)
+     *   14:04:30 - Idle detected → pause(13:59:30)
+     *   BUG: session 4579 gets endedAt=13:59:30 < startedAt=14:00:00 → NEGATIVE
+     */
+
+    test('single split undone when idle started before hour boundary', () => {
+      // Session starts at 13:59:32
+      const hourBoundary = (Math.floor(1705325400000 / 3600000) + 1) * 3600000
+      currentTime = hourBoundary - 28000 // 28s before boundary
+      tracker._poll()
+      simulatePoll('Brave Browser', 'GitHub')
+
+      const sessionId = activityStore.inserts[0].id
+      expect(activityStore.insert).toHaveBeenCalledTimes(1)
+
+      // Poll at 14:00:05 — proactive split at hour boundary
+      currentTime = hourBoundary + 5000
+      tracker._poll()
+      simulatePoll('Brave Browser', 'GitHub')
+
+      const splitSessionId = activityStore.inserts[1].id
+      expect(activityStore.insert).toHaveBeenCalledTimes(2)
+      expect(activityStore.updates[0].endedAt).toBe(hourBoundary) // original closed at boundary
+      expect(activityStore.inserts[1].startedAt).toBe(hourBoundary) // new starts at boundary
+
+      // Idle detected — retroactive idle started 30s before boundary
+      const idleStartedAt = hourBoundary - 30000
+      tracker.pause(idleStartedAt)
+
+      // Split session should be deleted
+      expect(activityStore.deletes).toContain(splitSessionId)
+      // Original session should be re-closed at idleStartedAt (clamped to startedAt since idle < start)
+      const lastUpdate = activityStore.updates[activityStore.updates.length - 1]
+      expect(lastUpdate.id).toBe(sessionId)
+      // endedAt should be >= startedAt (no negative duration)
+      expect(lastUpdate.endedAt).toBeGreaterThanOrEqual(hourBoundary - 28000)
+      expect(tracker.currentSession).toBeNull()
+    })
+
+    test('multiple splits undone when idle started before multiple hour boundaries', () => {
+      // Session starts at 12:55
+      const hour13 = Math.floor(1705325400000 / 3600000) * 3600000
+      const hour14 = hour13 + 3600000
+      currentTime = hour13 - 5 * 60000 // 12:55
+      tracker._poll()
+      simulatePoll('Cursor', 'file.ts')
+
+      const originalId = activityStore.inserts[0].id
+
+      // Poll at 13:00:05 — split at 13:00
+      currentTime = hour13 + 5000
+      tracker._poll()
+      simulatePoll('Cursor', 'file.ts')
+
+      expect(activityStore.insert).toHaveBeenCalledTimes(2)
+      const session13Id = activityStore.inserts[1].id
+
+      // Poll at 14:00:05 — split at 14:00
+      currentTime = hour14 + 5000
+      tracker._poll()
+      simulatePoll('Cursor', 'file.ts')
+
+      expect(activityStore.insert).toHaveBeenCalledTimes(3)
+      const session14Id = activityStore.inserts[2].id
+
+      // Idle detected — retroactive idle started at 12:58 (before both boundaries)
+      const idleStartedAt = hour13 - 2 * 60000 // 12:58
+      tracker.pause(idleStartedAt)
+
+      // Both split sessions should be deleted
+      expect(activityStore.deletes).toContain(session14Id)
+      expect(activityStore.deletes).toContain(session13Id)
+      // Original session should be closed at 12:58
+      const lastUpdate = activityStore.updates[activityStore.updates.length - 1]
+      expect(lastUpdate.id).toBe(originalId)
+      expect(lastUpdate.endedAt).toBe(idleStartedAt)
+    })
+
+    test('no undo needed when idle started after split boundary', () => {
+      const hourBoundary = (Math.floor(1705325400000 / 3600000) + 1) * 3600000
+      currentTime = hourBoundary - 5 * 60000 // 5 min before boundary
+      tracker._poll()
+      simulatePoll('Code', 'main.js')
+
+      // Split at hour boundary
+      currentTime = hourBoundary + 5000
+      tracker._poll()
+      simulatePoll('Code', 'main.js')
+
+      expect(activityStore.insert).toHaveBeenCalledTimes(2)
+
+      // Idle started 2 min AFTER boundary — no undo needed
+      const idleStartedAt = hourBoundary + 2 * 60000
+      tracker.pause(idleStartedAt)
+
+      // No deletes — split was valid
+      expect(activityStore.deletes).toHaveLength(0)
+      // Session closed at idle time
+      const lastUpdate = activityStore.updates[activityStore.updates.length - 1]
+      expect(lastUpdate.endedAt).toBe(idleStartedAt)
+    })
+
+    test('clamps to startedAt when idle started before session was created', () => {
+      // Session starts at 13:59:55
+      const hourBoundary = (Math.floor(1705325400000 / 3600000) + 1) * 3600000
+      currentTime = hourBoundary - 5000 // 5s before boundary
+      tracker._poll()
+      simulatePoll('Brave Browser', 'Page')
+
+      const sessionStart = currentTime
+
+      // Idle started 10s before session was created (no split happened)
+      const idleStartedAt = sessionStart - 10000
+      tracker.pause(idleStartedAt)
+
+      // Session should be closed at startedAt (clamped, 0 duration), not negative
+      const lastUpdate = activityStore.updates[activityStore.updates.length - 1]
+      expect(lastUpdate.endedAt).toBe(sessionStart)
+      expect(lastUpdate.endedAt).toBeGreaterThanOrEqual(sessionStart)
+    })
+
+    test('split history is cleared after normal app change', () => {
+      const hourBoundary = (Math.floor(1705325400000 / 3600000) + 1) * 3600000
+      currentTime = hourBoundary - 5 * 60000
+      tracker._poll()
+      simulatePoll('Code', 'main.js')
+
+      // Split at boundary
+      currentTime = hourBoundary + 5000
+      tracker._poll()
+      simulatePoll('Code', 'main.js')
+
+      // App change — this should clear split history
+      currentTime += 10000
+      tracker._poll()
+      simulatePoll('Safari', 'Google')
+
+      // Now idle with retroactive time before the boundary
+      // Should NOT undo any splits since they belong to a previous session
+      const idleStartedAt = hourBoundary - 1000
+      tracker.pause(idleStartedAt)
+
+      // The Safari session (id=3) should just be clamped, not deleted
+      expect(activityStore.deletes).toHaveLength(0)
+    })
+
+    test('split history is cleared when starting a new session', () => {
+      const hourBoundary = (Math.floor(1705325400000 / 3600000) + 1) * 3600000
+      currentTime = hourBoundary - 60000
+      tracker._poll()
+      simulatePoll('Code', 'main.js')
+
+      // Split at boundary
+      currentTime = hourBoundary + 5000
+      tracker._poll()
+      simulatePoll('Code', 'main.js')
+
+      // Access internal state to verify
+      expect(tracker._splitHistory.length).toBe(1)
+
+      // App change creates new session which clears history
+      currentTime += 5000
+      tracker._poll()
+      simulatePoll('Slack', 'general')
+
+      expect(tracker._splitHistory.length).toBe(0)
+    })
+
+    test('undo + re-split works when idle straddles a different boundary', () => {
+      // Session at 12:55, splits at 13:00 and 14:00
+      // Idle at 13:30 — should undo 14:00 split but keep 13:00 split,
+      // then close at 13:30
+      const hour13 = Math.floor(1705325400000 / 3600000) * 3600000
+      const hour14 = hour13 + 3600000
+      currentTime = hour13 - 5 * 60000 // 12:55
+
+      tracker._poll()
+      simulatePoll('Cursor', 'file.ts')
+
+      const originalId = activityStore.inserts[0].id
+
+      // Split at 13:00
+      currentTime = hour13 + 5000
+      tracker._poll()
+      simulatePoll('Cursor', 'file.ts')
+
+      const session13Id = activityStore.inserts[1].id
+
+      // Split at 14:00
+      currentTime = hour14 + 5000
+      tracker._poll()
+      simulatePoll('Cursor', 'file.ts')
+
+      const session14Id = activityStore.inserts[2].id
+
+      // Idle at 13:30 — between the two boundaries
+      const idleStartedAt = hour13 + 30 * 60000
+      tracker.pause(idleStartedAt)
+
+      // Only the 14:00 split should be deleted
+      expect(activityStore.deletes).toEqual([session14Id])
+      // The 13:00 session should be closed at 13:30
+      const lastUpdate = activityStore.updates[activityStore.updates.length - 1]
+      expect(lastUpdate.id).toBe(session13Id)
+      expect(lastUpdate.endedAt).toBe(idleStartedAt)
+      // Original session (12:55-13:00) was already closed correctly
+      expect(activityStore.updates[0].endedAt).toBe(hour13)
+    })
+  })
+
+  // ── stop() splits call sessions at hour boundaries ─────────────────
+
+  describe('stop splits call sessions at hour boundaries', () => {
+    test('stop splits Meet session that crosses hour boundary', () => {
+      // Start Meet at 13:55
+      const hourBoundary = (Math.floor(1705325400000 / 3600000) + 1) * 3600000
+      currentTime = hourBoundary - 5 * 60000
+      tracker._poll()
+      simulatePoll('Google Chrome', 'Google Meet - call')
+
+      expect(callStore.insert).toHaveBeenCalledTimes(1)
+
+      // stop() at 14:05 — Meet session crosses the boundary
+      currentTime = hourBoundary + 5 * 60000
+      tracker.stop()
+
+      // Meet session should be split: closed at boundary, new opened at boundary, then closed at now
+      expect(callStore.update).toHaveBeenCalledTimes(2) // boundary close + final close
+      expect(callStore.insert).toHaveBeenCalledTimes(2) // original + split
+      expect(callStore.updates[0].endedAt).toBe(hourBoundary)
+    })
+
+    test('stop splits FaceTime session that crosses hour boundary', () => {
+      const hourBoundary = (Math.floor(1705325400000 / 3600000) + 1) * 3600000
+      currentTime = hourBoundary - 3 * 60000
+      tracker._poll()
+      simulatePoll('FaceTime', 'Call')
+
+      currentTime = hourBoundary + 3 * 60000
+      tracker.stop()
+
+      expect(callStore.update).toHaveBeenCalledTimes(2)
+      expect(callStore.insert).toHaveBeenCalledTimes(2)
+      expect(callStore.updates[0].endedAt).toBe(hourBoundary)
     })
   })
 })

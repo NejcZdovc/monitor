@@ -36,6 +36,9 @@ class WindowTracker {
   timer: ReturnType<typeof setInterval> | null
   paused: boolean
   polling: boolean
+  // Track sessions created by hour-boundary splits so they can be undone
+  // when idle detection provides a retroactive end time before the split point
+  _splitHistory: Array<{ id: number; startedAt: number }>
 
   constructor(activityStore: ActivityStore, callStore: CallStore) {
     this.activityStore = activityStore
@@ -47,6 +50,7 @@ class WindowTracker {
     this.timer = null
     this.paused = false
     this.polling = false
+    this._splitHistory = []
   }
 
   start() {
@@ -116,6 +120,7 @@ class WindowTracker {
 
   _startSession(appName: string, windowTitle: string, category: string) {
     const now = Date.now()
+    this._splitHistory = []
     this.currentSession = {
       id: 0,
       appName,
@@ -136,10 +141,36 @@ class WindowTracker {
 
   _endCurrentSession(endTime?: number) {
     if (!this.currentSession) return
-    const now = endTime || Date.now()
+    let now = endTime || Date.now()
+
+    // If endTime is before the current session's start (happens when idle detection
+    // provides a retroactive timestamp after hour-boundary splits already occurred),
+    // undo the splits back to the session that contains the actual end time.
+    while (now < this.currentSession.startedAt && this._splitHistory.length > 0) {
+      // Delete the session that was created after the real end time
+      this.activityStore.delete(this.currentSession.id)
+      // Restore the previous split as current (it was already closed at the boundary,
+      // so we'll re-close it at the correct end time below)
+      const prev = this._splitHistory.pop()!
+      this.currentSession = {
+        id: prev.id,
+        appName: this.currentSession.appName,
+        windowTitle: this.currentSession.windowTitle,
+        category: this.currentSession.category,
+        startedAt: prev.startedAt,
+      }
+    }
+
+    // If endTime is still before startedAt (idle started before this session),
+    // clamp to startedAt so we never produce negative durations
+    if (now < this.currentSession.startedAt) {
+      now = this.currentSession.startedAt
+    }
+
     this._splitSessionAtHourBoundaries(Math.floor(now / 3600000))
     this.activityStore.update(this.currentSession.id, now, this.currentSession.startedAt)
     this.currentSession = null
+    this._splitHistory = []
   }
 
   /**
@@ -156,6 +187,8 @@ class WindowTracker {
     for (let h = sessionHour + 1; h <= targetHour; h++) {
       const boundary = h * 3600000
       this.activityStore.update(this.currentSession.id, boundary, this.currentSession.startedAt)
+      // Record the closed split so it can be undone if idle provides a retroactive end time
+      this._splitHistory.push({ id: this.currentSession.id, startedAt: this.currentSession.startedAt })
       this.currentSession = {
         id: 0,
         appName,
@@ -270,11 +303,14 @@ class WindowTracker {
     this.timer = null
     this._endCurrentSession()
     const now = Date.now()
+    const currentHour = Math.floor(now / 3600000)
     if (this.currentMeetSession) {
+      this.currentMeetSession = this._splitCallSessionAtHourBoundaries(this.currentMeetSession, currentHour)
       this.callStore.update(this.currentMeetSession.id, now, this.currentMeetSession.startedAt)
       this.currentMeetSession = null
     }
     if (this.currentFaceTimeSession) {
+      this.currentFaceTimeSession = this._splitCallSessionAtHourBoundaries(this.currentFaceTimeSession, currentHour)
       this.callStore.update(this.currentFaceTimeSession.id, now, this.currentFaceTimeSession.startedAt)
       this.currentFaceTimeSession = null
     }
