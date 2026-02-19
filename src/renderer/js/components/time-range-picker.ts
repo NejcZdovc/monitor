@@ -59,6 +59,9 @@ export class TimeRangePicker {
     this.backBtn.addEventListener('click', () => {
       if (this.onBack) this.onBack()
     })
+
+    this.startDate.addEventListener('click', () => this.startDate.showPicker())
+    this.endDate.addEventListener('click', () => this.endDate.showPicker())
   }
 
   showDayDrill(label: string): void {

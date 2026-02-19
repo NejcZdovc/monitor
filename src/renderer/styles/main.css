@@ -159,10 +159,16 @@ body {
   font-size: 13px;
   font-family: inherit;
   outline: none;
+  cursor: pointer;
 }
 
 .custom-range input[type='date']:focus {
   border-color: var(--accent);
+}
+
+.custom-range input[type='date']::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
 }
 
 .range-separator {
