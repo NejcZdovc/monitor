@@ -9,7 +9,7 @@ import { InputChart } from './components/input-chart'
 import { ProjectChart } from './components/project-chart'
 import { SummaryCards } from './components/summary-cards'
 import { TimeRangePicker } from './components/time-range-picker'
-import { getThisMonth, getThisWeek, getToday, type TimeRange } from './date-utils'
+import { formatDayLabel, getDayRange, getThisMonth, getThisWeek, getToday, type TimeRange } from './date-utils'
 
 class Dashboard {
   summaryCards: SummaryCards
@@ -26,10 +26,14 @@ class Dashboard {
   trackingDot: HTMLElement
   trackingLabel: HTMLElement
   _currentRange: TimeRange
+  _parentRange: TimeRange | null
 
   constructor() {
     this.summaryCards = new SummaryCards()
-    this.timeRangePicker = new TimeRangePicker((range) => this.onRangeChange(range))
+    this.timeRangePicker = new TimeRangePicker((range) => {
+      this._parentRange = null
+      this.onRangeChange(range)
+    })
     this.activeTimeChart = new ActiveTimeChart('chart-active-time')
     this.inputChart = new InputChart('chart-input')
     this.categoryDetail = new CategoryDetail()
@@ -38,6 +42,22 @@ class Dashboard {
     this.callChart = new CallChart('chart-calls')
     this.entertainmentChart = new EntertainmentChart('chart-entertainment')
     this.aiChart = new AiChart('chart-ai')
+
+    this.activeTimeChart.onBarClick = (dateStr) => {
+      this._parentRange = this._currentRange
+      const dayRange = getDayRange(dateStr)
+      this.timeRangePicker.showDayDrill(formatDayLabel(dateStr))
+      this.onRangeChange(dayRange)
+    }
+
+    this.timeRangePicker.onBack = () => {
+      if (this._parentRange) {
+        const range = this._parentRange
+        this._parentRange = null
+        this.timeRangePicker.hideDayDrill()
+        this.onRangeChange(range)
+      }
+    }
 
     // Tracking toggle
     this.trackingBtn = document.getElementById('tracking-btn')!
@@ -51,6 +71,7 @@ class Dashboard {
 
     // Load initial data
     this._currentRange = getToday()
+    this._parentRange = null
     this.onRangeChange(this._currentRange)
 
     // Auto-refresh every 30 seconds, but only when the dashboard window is focused
@@ -101,6 +122,7 @@ class Dashboard {
   }
 
   _getFreshRange(): TimeRange {
+    if (this._parentRange) return this._currentRange
     const type = this._currentRange.type
     if (type === 'today') return getToday()
     if (type === 'week') return getThisWeek()

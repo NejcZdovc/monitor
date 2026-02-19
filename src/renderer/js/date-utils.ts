@@ -29,6 +29,18 @@ export function getThisMonth(): TimeRange {
   return { start: start.getTime(), end: end.getTime(), type: 'month' }
 }
 
+export function getDayRange(dateStr: string): TimeRange {
+  const start = new Date(`${dateStr}T00:00:00`)
+  const end = new Date(start)
+  end.setDate(end.getDate() + 1)
+  return { start: start.getTime(), end: end.getTime(), type: 'today' }
+}
+
+export function formatDayLabel(dateStr: string): string {
+  const d = new Date(`${dateStr}T12:00:00`)
+  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+}
+
 export function getCustomRange(startDate: string, endDate: string): TimeRange {
   const start = new Date(startDate)
   start.setHours(0, 0, 0, 0)

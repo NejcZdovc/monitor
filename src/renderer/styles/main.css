@@ -103,6 +103,42 @@ body {
   color: white;
 }
 
+.day-drill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 8px;
+  padding-right: 12px;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.day-drill.hidden {
+  display: none;
+}
+
+.day-drill-back {
+  padding: 4px 8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.day-drill-back:hover {
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.day-drill-text {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
 .custom-range {
   display: flex;
   align-items: center;
