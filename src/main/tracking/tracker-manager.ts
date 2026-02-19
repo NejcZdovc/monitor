@@ -59,14 +59,33 @@ class TrackerManager {
   }
 
   _handleIdleEnd(idleStartedAt: number | null, idleEndedAt: number) {
-    // Record the idle period
+    // Record the idle period, splitting at each hour boundary
+    const start = idleStartedAt!
+    const startHour = Math.floor(start / 3600000)
+    const endHour = Math.floor(idleEndedAt / 3600000)
+
+    let cursor = start
+    for (let h = startHour + 1; h <= endHour; h++) {
+      const boundary = h * 3600000
+      this.activityStore.insert({
+        appName: 'Idle',
+        windowTitle: '',
+        category: 'Idle',
+        startedAt: cursor,
+        endedAt: boundary,
+        durationMs: boundary - cursor,
+        isIdle: true,
+      })
+      cursor = boundary
+    }
+    // Final segment (or only segment if no boundary crossed)
     this.activityStore.insert({
       appName: 'Idle',
       windowTitle: '',
       category: 'Idle',
-      startedAt: idleStartedAt!,
+      startedAt: cursor,
       endedAt: idleEndedAt,
-      durationMs: idleEndedAt - idleStartedAt!,
+      durationMs: idleEndedAt - cursor,
       isIdle: true,
     })
 

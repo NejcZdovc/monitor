@@ -34,6 +34,9 @@ class CallDetector {
     if (this.checking) return
     this.checking = true
 
+    // Split any active call sessions at hour boundaries
+    this._splitAtHourBoundary()
+
     let pending = CALL_PROCESSES.length
     const runningCalls = new Set<string>()
 
@@ -79,6 +82,28 @@ class CallDetector {
           this.checking = false
         }
       })
+    }
+  }
+
+  _splitAtHourBoundary() {
+    const currentHour = Math.floor(Date.now() / 3600000)
+    for (const [appName, session] of this.activeCalls) {
+      const sessionHour = Math.floor(session.startedAt / 3600000)
+      if (currentHour <= sessionHour) continue
+
+      let current = session
+      for (let h = sessionHour + 1; h <= currentHour; h++) {
+        const boundary = h * 3600000
+        this.callStore.update(current.id, boundary, current.startedAt)
+        current = { id: 0, appName: current.appName, startedAt: boundary }
+        current.id = this.callStore.insert({
+          appName: current.appName,
+          startedAt: boundary,
+          endedAt: null,
+          durationMs: null,
+        })
+      }
+      this.activeCalls.set(appName, current)
     }
   }
 

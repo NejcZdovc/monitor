@@ -43,8 +43,8 @@ class Dashboard {
     this.entertainmentChart = new EntertainmentChart('chart-entertainment')
     this.aiChart = new AiChart('chart-ai')
 
-    this.activeTimeChart.onHourClick = (hourMs, activeMs, label) => {
-      this.categoryDetail.openHour(label, activeMs, hourMs)
+    this.activeTimeChart.onHourClick = (hourMs, _activeMs, label) => {
+      this.categoryDetail.openHour(label, hourMs)
     }
 
     this.activeTimeChart.onBarClick = (dateStr) => {

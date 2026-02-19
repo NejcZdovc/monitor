@@ -68,10 +68,10 @@ export class CategoryDetail {
     }
   }
 
-  async openHour(hourLabel: string, totalMs: number, hourMs: number): Promise<void> {
+  async openHour(hourLabel: string, hourMs: number): Promise<void> {
     this.titleEl.textContent = hourLabel
     this.colorDot.style.background = '#569cd6'
-    this.totalEl.textContent = formatDuration(totalMs)
+    this.totalEl.textContent = ''
     this.appList.innerHTML = ''
 
     this.overlay.classList.remove('hidden')
@@ -83,6 +83,9 @@ export class CategoryDetail {
         this.appList.innerHTML = '<div class="modal-empty">No apps found for this hour</div>'
         return
       }
+
+      const totalMs = apps.reduce((sum, a) => sum + a.total_ms, 0)
+      this.totalEl.textContent = formatDuration(totalMs)
 
       const maxMs = apps[0].total_ms
 
