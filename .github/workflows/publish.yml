@@ -44,14 +44,6 @@ jobs:
           security import $CERTIFICATE_PATH -P "$CSC_KEY_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH -T /usr/bin/codesign -T /usr/bin/security
           security set-key-partition-list -S apple-tool:,apple:,codesign: -k "ci" $KEYCHAIN_PATH
           security list-keychain -d user -s $KEYCHAIN_PATH
-
-      - name: Verify certificate
-        run: |
-          echo "=== Available signing identities ==="
-          security find-identity -v -p codesigning
-          echo "=== Keychain list ==="
-          security list-keychain -d user
-
       - name: Install dependencies
         run: npm ci
 
@@ -81,5 +73,5 @@ jobs:
           APPLE_ID: ${{ vars.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
-          DEBUG: electron-forge:*,electron-packager,electron-osx-sign*,@electron/osx-sign*
+          DEBUG: electron-forge:*,electron-packager,electron-osx-sign*,@electron/osx-sign*,electron-notarize*,@electron/notarize*
         run: npm run publish
