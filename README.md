@@ -21,6 +21,7 @@ Whether you want to understand your work habits, track how much time you spend c
 ## Features
 
 ### Automatic Tracking
+
 - **App usage** — tracks the active window every 5 seconds, recording app name, window title, and category
 - **Input activity** — counts keystrokes and mouse clicks (aggregated counts only, no keylogging)
 - **Idle detection** — automatically pauses tracking after 5 minutes of inactivity
@@ -28,24 +29,26 @@ Whether you want to understand your work habits, track how much time you spend c
 - **YouTube tracking** — detects YouTube playing in any browser, even when the browser is not focused
 
 ### Smart Categorization
+
 Apps are automatically sorted into categories:
 
-| Category | Examples |
-|---|---|
-| Coding | VS Code, Cursor, Xcode, IntelliJ, Zed |
-| Terminal | Terminal, iTerm2, Warp, Ghostty |
-| AI | Claude, ChatGPT, Copilot |
-| Communication | Slack, Discord, Messages, Mail |
-| Meetings | Zoom, Teams, FaceTime, Google Meet |
-| Browsers | Chrome, Safari, Firefox, Arc, Brave |
-| Productivity | Notion, Figma, Finder, Notes |
-| DevTools | Postman, Docker, TablePlus, Tower |
-| Entertainment | Spotify, YouTube, Music |
-| System | System Settings, Activity Monitor |
+| Category      | Examples                              |
+| ------------- | ------------------------------------- |
+| Coding        | VS Code, Cursor, Xcode, IntelliJ, Zed |
+| Terminal      | Terminal, iTerm2, Warp, Ghostty       |
+| AI            | Claude, ChatGPT, Copilot              |
+| Communication | Slack, Discord, Messages, Mail        |
+| Meetings      | Zoom, Teams, FaceTime, Google Meet    |
+| Browsers      | Chrome, Safari, Firefox, Arc, Brave   |
+| Productivity  | Notion, Figma, Finder, Notes          |
+| DevTools      | Postman, Docker, TablePlus, Tower     |
+| Entertainment | Spotify, YouTube, Music               |
+| System        | System Settings, Activity Monitor     |
 
 AI usage in browsers (Claude, ChatGPT, etc.) is also detected and categorized automatically.
 
 ### Dashboard
+
 - **Summary cards** — active time, keystrokes, mouse clicks, call time, YouTube time
 - **Active time chart** — hourly (today) or daily breakdown of active vs. idle time
 - **Input activity chart** — keystroke and click trends over time
@@ -56,6 +59,7 @@ AI usage in browsers (Claude, ChatGPT, etc.) is also detected and categorized au
 - **Time range picker** — today, this week, this month, or custom date range
 
 ### Menu Bar
+
 - Tray icon with a quick-stats popup showing today's numbers
 - Pause/resume tracking
 - Open dashboard or quit from the tray
@@ -71,12 +75,6 @@ On first launch, macOS will ask you to grant **Accessibility** permission:
 
 1. Go to **System Settings → Privacy & Security → Accessibility**
 2. Enable **Monitor** in the list
-
-> **Note:** The app is not yet code-signed, so macOS will block it. After dragging to Applications, run this in Terminal:
-> ```bash
-> xattr -d com.apple.quarantine /Applications/Monitor.app
-> ```
-> Then launch the app normally. You only need to do this once.
 
 ## Development
 

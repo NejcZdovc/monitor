@@ -8,9 +8,22 @@
 
 // ── Mocks ────────────────────────────────────────────────────────────────────
 
+const mockPowerMonitorListeners: Record<string, Array<() => void>> = {}
+
 jest.mock('electron', () => ({
   systemPreferences: { isTrustedAccessibilityClient: jest.fn(() => true) },
-  powerMonitor: { getSystemIdleTime: jest.fn(() => 0) },
+  powerMonitor: {
+    getSystemIdleTime: jest.fn(() => 0),
+    on: jest.fn((event: string, handler: () => void) => {
+      if (!mockPowerMonitorListeners[event]) mockPowerMonitorListeners[event] = []
+      mockPowerMonitorListeners[event].push(handler)
+    }),
+    removeListener: jest.fn((event: string, handler: () => void) => {
+      if (mockPowerMonitorListeners[event]) {
+        mockPowerMonitorListeners[event] = mockPowerMonitorListeners[event].filter((h) => h !== handler)
+      }
+    }),
+  },
 }))
 
 jest.mock('node:child_process', () => ({
@@ -60,6 +73,7 @@ function createMockInputTracker() {
     start: jest.fn(),
     stop: jest.fn(),
     flush: jest.fn(),
+    restart: jest.fn(),
   }
 }
 
@@ -121,6 +135,11 @@ describe('TrackerManager', () => {
 
     // Create a TrackerManager with a dummy database, then override internals
     // We can't construct with a real DB, so we use Object.create + manual setup
+    // Clear powerMonitor listener tracking
+    for (const key of Object.keys(mockPowerMonitorListeners)) {
+      delete mockPowerMonitorListeners[key]
+    }
+
     manager = Object.create(TrackerManager.prototype)
     manager.activityStore = activityStore as unknown as ActivityStore
     manager.windowTracker = windowTracker as unknown as WindowTracker
@@ -129,6 +148,7 @@ describe('TrackerManager', () => {
     manager.idleDetector = idleDetector as unknown as IdleDetector
     manager.youtubeTracker = youtubeTracker as unknown as YouTubeTracker
     manager.isTracking = false
+    manager._resumeHandler = null
   })
 
   afterEach(() => {
@@ -159,6 +179,43 @@ describe('TrackerManager', () => {
       expect(idleDetector.stop).toHaveBeenCalledTimes(1)
       expect(youtubeTracker.stop).toHaveBeenCalledTimes(1)
       expect(manager.isTracking).toBe(false)
+    })
+  })
+
+  // ── system resume (sleep/wake) ──────────────────────────────────────
+
+  describe('system resume handling', () => {
+    test('start registers a powerMonitor resume listener', () => {
+      const { powerMonitor } = require('electron')
+      manager.start()
+
+      expect(powerMonitor.on).toHaveBeenCalledWith('resume', expect.any(Function))
+    })
+
+    test('stop removes the powerMonitor resume listener', () => {
+      const { powerMonitor } = require('electron')
+      manager.start()
+      manager.stop()
+
+      expect(powerMonitor.removeListener).toHaveBeenCalledWith('resume', expect.any(Function))
+    })
+
+    test('resume event restarts input tracker', () => {
+      manager.start()
+
+      // Simulate system resume
+      const handlers = mockPowerMonitorListeners.resume
+      expect(handlers).toHaveLength(1)
+      handlers[0]()
+
+      expect(inputTracker.restart).toHaveBeenCalledTimes(1)
+    })
+
+    test('resume listener is cleaned up after stop', () => {
+      manager.start()
+      manager.stop()
+
+      expect(mockPowerMonitorListeners.resume).toHaveLength(0)
     })
   })
 

@@ -263,6 +263,86 @@ describe('InputTracker', () => {
     })
   })
 
+  // ── Restart ─────────────────────────────────────────────────────────
+
+  describe('restart', () => {
+    test('creates a new worker', () => {
+      tracker.start()
+      const firstWorker = mockWorkerInstance
+
+      tracker.restart()
+
+      expect(mockWorkerInstance).not.toBe(firstWorker)
+      expect(tracker.worker).not.toBeNull()
+    })
+
+    test('sends stop to old worker before creating new one', () => {
+      tracker.start()
+      const firstWorker = mockWorkerInstance
+
+      tracker.restart()
+
+      expect(firstWorker!.postMessage).toHaveBeenCalledWith('stop')
+    })
+
+    test('flushes pending counts before replacing worker', () => {
+      tracker.start()
+      simulateWorkerMessage({ keyCount: 42, clickCount: 7 })
+
+      tracker.restart()
+
+      expect(inputStore.insert).toHaveBeenCalledWith({
+        recordedAt: currentTime,
+        keyCount: 42,
+        clickCount: 7,
+      })
+      expect(tracker.pendingKeys).toBe(0)
+      expect(tracker.pendingClicks).toBe(0)
+    })
+
+    test('skips insert when no pending counts', () => {
+      tracker.start()
+
+      tracker.restart()
+
+      expect(inputStore.insert).not.toHaveBeenCalled()
+    })
+
+    test('works when worker is already null (previously crashed)', () => {
+      tracker.start()
+      // Simulate worker crash
+      const exitHandlers = mockWorkerInstance!.listeners.exit
+      for (const handler of exitHandlers) {
+        handler(1)
+      }
+      expect(tracker.worker).toBeNull()
+
+      tracker.restart()
+
+      expect(tracker.worker).not.toBeNull()
+    })
+
+    test('does not create worker if accessibility not granted', () => {
+      tracker.start()
+      const { systemPreferences } = require('electron')
+      systemPreferences.isTrustedAccessibilityClient.mockReturnValueOnce(false)
+
+      tracker.restart()
+
+      expect(tracker.worker).toBeNull()
+    })
+
+    test('preserves flush timer across restart', () => {
+      tracker.start()
+      const timer = tracker.timer
+
+      tracker.restart()
+
+      // Timer should not have been cleared by restart
+      expect(tracker.timer).toBe(timer)
+    })
+  })
+
   // ── Stop ────────────────────────────────────────────────────────────
 
   describe('stop', () => {

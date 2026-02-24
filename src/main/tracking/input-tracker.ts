@@ -21,6 +21,40 @@ class InputTracker {
   }
 
   start() {
+    this._createWorker()
+    if (this.worker) {
+      this.timer = setInterval(() => this.flush(), this.flushInterval)
+    }
+  }
+
+  /**
+   * Restart the input worker after system sleep/wake.
+   * macOS IOKit event taps become invalid after sleep, so the native
+   * uiohook hook stops receiving events. Restarting the worker
+   * re-establishes the hook.
+   */
+  restart() {
+    // Save any accumulated counts before replacing the worker
+    if (this.pendingKeys > 0 || this.pendingClicks > 0) {
+      this.inputStore.insert({
+        recordedAt: Date.now(),
+        keyCount: this.pendingKeys,
+        clickCount: this.pendingClicks,
+      })
+      this.pendingKeys = 0
+      this.pendingClicks = 0
+    }
+
+    // Terminate old worker
+    if (this.worker) {
+      this.worker.postMessage('stop')
+      this.worker = null
+    }
+
+    this._createWorker()
+  }
+
+  _createWorker() {
     // uiohook-napi will SIGABRT if Accessibility is not granted
     const { systemPreferences } = require('electron')
     if (!systemPreferences.isTrustedAccessibilityClient(false)) {
@@ -48,10 +82,7 @@ class InputTracker {
       })
     } catch (err: unknown) {
       console.error('Failed to start input worker:', (err as Error).message)
-      return
     }
-
-    this.timer = setInterval(() => this.flush(), this.flushInterval)
   }
 
   flush() {

@@ -1,3 +1,4 @@
+import { powerMonitor } from 'electron'
 import { ActivityStore } from '../data/activity-store'
 import { BackgroundEntertainmentStore } from '../data/background-entertainment-store'
 import { CallStore } from '../data/call-store'
@@ -20,6 +21,7 @@ class TrackerManager {
   youtubeTracker: YouTubeTracker
   idleDetector: IdleDetector
   isTracking: boolean
+  _resumeHandler: (() => void) | null
 
   constructor(database: AppDatabase) {
     this.activityStore = new ActivityStore(database.db)
@@ -38,6 +40,7 @@ class TrackerManager {
     )
 
     this.isTracking = false
+    this._resumeHandler = null
   }
 
   start() {
@@ -47,6 +50,12 @@ class TrackerManager {
     this.idleDetector.start()
     this.youtubeTracker.start()
     this.isTracking = true
+
+    // Restart input worker after Mac wake from sleep.
+    // macOS IOKit event taps become invalid after sleep, so uiohook
+    // stops receiving events. Re-creating the worker re-establishes the hook.
+    this._resumeHandler = () => this.inputTracker.restart()
+    powerMonitor.on('resume', this._resumeHandler)
   }
 
   _handleIdleStart(idleStartedAt: number) {
@@ -78,6 +87,10 @@ class TrackerManager {
   }
 
   stop() {
+    if (this._resumeHandler) {
+      powerMonitor.removeListener('resume', this._resumeHandler)
+      this._resumeHandler = null
+    }
     this.windowTracker.stop()
     this.inputTracker.stop()
     this.callDetector.stop()
