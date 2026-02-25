@@ -11,7 +11,7 @@ let popupWindow: BrowserWindow | null = null
 let ipcRegistered = false
 
 const POPUP_WIDTH = 260
-const POPUP_HEIGHT = 414
+const POPUP_HEIGHT = 384
 
 function createPopupWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -184,10 +184,4 @@ function createTray(
   return tray
 }
 
-function refreshTrayPopup(): void {
-  if (popupWindow && !popupWindow.isDestroyed()) {
-    popupWindow.webContents.send('tray-refresh')
-  }
-}
-
-export { createTray, refreshTrayPopup }
+export { createTray }

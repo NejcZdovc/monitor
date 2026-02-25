@@ -2,11 +2,8 @@ import { app, BrowserWindow } from 'electron'
 import { autoUpdater } from 'electron-updater'
 
 let pendingVersion: string | null = null
-let onUpdateDownloaded: (() => void) | null = null
 
-function initAutoUpdater(onReady: () => void): void {
-  onUpdateDownloaded = onReady
-
+function initAutoUpdater(): void {
   if (!app.isPackaged) return
 
   autoUpdater.autoDownload = true
@@ -17,7 +14,6 @@ function initAutoUpdater(onReady: () => void): void {
     for (const win of BrowserWindow.getAllWindows()) {
       win.webContents.send('app:update-ready', info.version)
     }
-    onUpdateDownloaded?.()
   })
 
   autoUpdater.checkForUpdates()

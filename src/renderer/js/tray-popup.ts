@@ -64,33 +64,6 @@ document.getElementById('trackingBadge')?.addEventListener('click', async () => 
   await refresh()
 })
 
-// Update button
-const updateBtn = document.getElementById('updateBtn')!
-
-async function refreshUpdateBtn(): Promise<void> {
-  const version = await window.trayApi.getPendingVersion()
-  if (version) {
-    updateBtn.innerHTML =
-      '<span class="icon"><svg aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 2v8M4.5 6.5 8 10l3.5-3.5M3 13h10" /></svg></span>' +
-      `Upgrade to ${version}`
-  }
-}
-
-updateBtn.addEventListener('click', async () => {
-  const version = await window.trayApi.getPendingVersion()
-  if (version) {
-    window.trayApi.quitAndInstall()
-  } else {
-    window.trayApi.checkForUpdates()
-  }
-})
-
-window.trayApi.onUpdateReady((version) => {
-  updateBtn.innerHTML =
-    '<span class="icon"><svg aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 2v8M4.5 6.5 8 10l3.5-3.5M3 13h10" /></svg></span>' +
-    `Upgrade to ${version}`
-})
-
 // Listen for refresh signals from main process
 window.trayApi.onRefresh(() => {
   refresh()
@@ -98,4 +71,3 @@ window.trayApi.onRefresh(() => {
 
 // Initial load
 refresh()
-refreshUpdateBtn()
