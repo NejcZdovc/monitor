@@ -22,6 +22,7 @@ class TrackerManager {
   idleDetector: IdleDetector
   isTracking: boolean
   _resumeHandler: (() => void) | null
+  _idleWasPaused: boolean
 
   constructor(database: AppDatabase) {
     this.activityStore = new ActivityStore(database.db)
@@ -41,6 +42,7 @@ class TrackerManager {
 
     this.isTracking = false
     this._resumeHandler = null
+    this._idleWasPaused = false
   }
 
   start() {
@@ -51,24 +53,32 @@ class TrackerManager {
     this.youtubeTracker.start()
     this.isTracking = true
 
-    // Restart input worker after Mac wake from sleep.
+    // Restart trackers after Mac wake from sleep.
     // macOS IOKit event taps become invalid after sleep, so uiohook
     // stops receiving events. Re-creating the worker re-establishes the hook.
-    this._resumeHandler = () => this.inputTracker.restart()
+    // Window tracker timer can also become unreliable after long sleep.
+    this._resumeHandler = () => {
+      this.inputTracker.restart()
+      this.windowTracker.resume()
+    }
     powerMonitor.on('resume', this._resumeHandler)
   }
 
   _handleIdleStart(idleStartedAt: number) {
     // Don't go idle during calls (native app calls or Google Meet)
     if (this.callDetector.hasActiveCalls() || this.windowTracker.hasActiveGoogleMeet()) {
+      this._idleWasPaused = false
       return
     }
 
+    this._idleWasPaused = true
     this.windowTracker.pause(idleStartedAt)
     this.inputTracker.flush()
   }
 
   _handleIdleEnd(idleStartedAt: number | null, idleEndedAt: number) {
+    if (!this._idleWasPaused) return
+
     // Record the idle period, splitting at each hour boundary
     const segments = splitTimeRange(idleStartedAt!, idleEndedAt)
     for (const seg of segments) {

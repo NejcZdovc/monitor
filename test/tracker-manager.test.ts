@@ -149,6 +149,7 @@ describe('TrackerManager', () => {
     manager.youtubeTracker = youtubeTracker as unknown as YouTubeTracker
     manager.isTracking = false
     manager._resumeHandler = null
+    manager._idleWasPaused = false
   })
 
   afterEach(() => {
@@ -200,7 +201,7 @@ describe('TrackerManager', () => {
       expect(powerMonitor.removeListener).toHaveBeenCalledWith('resume', expect.any(Function))
     })
 
-    test('resume event restarts input tracker', () => {
+    test('resume event restarts input tracker and window tracker', () => {
       manager.start()
 
       // Simulate system resume
@@ -209,6 +210,7 @@ describe('TrackerManager', () => {
       handlers[0]()
 
       expect(inputTracker.restart).toHaveBeenCalledTimes(1)
+      expect(windowTracker.resume).toHaveBeenCalledTimes(1)
     })
 
     test('resume listener is cleaned up after stop', () => {
@@ -261,6 +263,20 @@ describe('TrackerManager', () => {
   // ── _handleIdleEnd ──────────────────────────────────────────────────
 
   describe('_handleIdleEnd', () => {
+    beforeEach(() => {
+      // Simulate that _handleIdleStart actually paused the tracker
+      manager._idleWasPaused = true
+    })
+
+    test('skips idle recording if idle start was skipped (during call)', () => {
+      manager._idleWasPaused = false
+      const hour14 = Math.floor(currentTime / 3600000) * 3600000
+      manager._handleIdleEnd(hour14 + 10 * 60000, hour14 + 20 * 60000)
+
+      expect(activityStore.insert).not.toHaveBeenCalled()
+      expect(windowTracker.resume).not.toHaveBeenCalled()
+    })
+
     test('inserts single idle session within one hour', () => {
       const hour14 = Math.floor(currentTime / 3600000) * 3600000
       const idleStart = hour14 + 10 * 60000

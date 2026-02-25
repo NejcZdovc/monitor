@@ -25,9 +25,20 @@ const APPLESCRIPT_CONTENT = [
   'end tell',
 ].join('\n')
 
-// Write script to a temp file once (avoids shell quoting issues)
+// Write script to a temp file (avoids shell quoting issues)
 const SCRIPT_PATH = path.join(os.tmpdir(), 'monitor-active-window.scpt')
-fs.writeFileSync(SCRIPT_PATH, APPLESCRIPT_CONTENT, 'utf8')
+
+function ensureScriptFile() {
+  try {
+    if (!fs.existsSync(SCRIPT_PATH)) {
+      fs.writeFileSync(SCRIPT_PATH, APPLESCRIPT_CONTENT, 'utf8')
+    }
+  } catch {
+    // Best effort - poll will fail and log the osascript error
+  }
+}
+
+ensureScriptFile()
 
 class WindowTracker {
   activityStore: ActivityStore
@@ -42,6 +53,7 @@ class WindowTracker {
   // Track sessions created by hour-boundary splits so they can be undone
   // when idle detection provides a retroactive end time before the split point
   _splitHistory: Array<{ id: number; startedAt: number }>
+  _consecutiveErrors: number
 
   constructor(activityStore: ActivityStore, callStore: CallStore) {
     this.activityStore = activityStore
@@ -54,6 +66,7 @@ class WindowTracker {
     this.paused = false
     this.polling = false
     this._splitHistory = []
+    this._consecutiveErrors = 0
   }
 
   start() {
@@ -66,6 +79,11 @@ class WindowTracker {
 
     this.paused = false
     this._poll()
+    this._restartTimer()
+  }
+
+  _restartTimer() {
+    if (this.timer) clearInterval(this.timer)
     this.timer = setInterval(() => this._poll(), this.pollInterval)
   }
 
@@ -73,8 +91,12 @@ class WindowTracker {
     if (this.paused || this.polling) return
     this.polling = true
 
+    // Ensure script file exists (macOS can clean temp files during sleep)
+    ensureScriptFile()
+
     // Safety timeout: ensure polling flag is reset even if execFile callback never fires
     const safetyTimer = setTimeout(() => {
+      console.warn('Window tracker: safety timeout fired (osascript callback never ran)')
       this.polling = false
     }, POLL_SAFETY_TIMEOUT_MS)
 
@@ -84,7 +106,17 @@ class WindowTracker {
       if (this.paused) return
 
       try {
-        if (err) return
+        if (err) {
+          this._consecutiveErrors++
+          if (this._consecutiveErrors === 1 || this._consecutiveErrors % 60 === 0) {
+            console.warn(
+              `Window tracker: osascript failed (${this._consecutiveErrors} consecutive):`,
+              (err as Error).message,
+            )
+          }
+          return
+        }
+        this._consecutiveErrors = 0
         const result = stdout.trim()
         const sep = result.indexOf('|||')
         if (sep === -1) return
@@ -115,8 +147,8 @@ class WindowTracker {
           this._endCurrentSession()
           this._startSession(resolvedApp, windowTitle, category)
         }
-      } catch (_e) {
-        // Window detection can fail temporarily
+      } catch (e) {
+        console.error('Window tracker: poll error:', (e as Error).message)
       }
     })
   }
@@ -251,8 +283,10 @@ class WindowTracker {
 
   resume() {
     this.paused = false
-    this.polling = false // Reset in case a timed-out poll left this stuck
-    this._poll() // Immediately poll to start tracking right away
+    this.polling = false
+    this._consecutiveErrors = 0
+    this._restartTimer()
+    this._poll()
   }
 
   hasActiveGoogleMeet(): boolean {
