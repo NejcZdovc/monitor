@@ -184,4 +184,10 @@ function createTray(
   return tray
 }
 
-export { createTray }
+function refreshTrayPopup(): void {
+  if (popupWindow && !popupWindow.isDestroyed()) {
+    popupWindow.webContents.send('tray-refresh')
+  }
+}
+
+export { createTray, refreshTrayPopup }

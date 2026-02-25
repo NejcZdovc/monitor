@@ -10,6 +10,7 @@ export default defineConfig({
         ...builtinModules.flatMap((m) => [m, `node:${m}`]),
         'better-sqlite3',
         'uiohook-napi',
+        'electron-updater',
       ],
     },
   },

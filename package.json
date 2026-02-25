@@ -42,7 +42,7 @@
     "chart.js": "^4.4.0",
     "chartjs-adapter-date-fns": "^3.0.0",
     "date-fns": "^4.1.0",
-    "uiohook-napi": "^1.5.4",
-    "update-electron-app": "^3.1.2"
+    "electron-updater": "^6.8.3",
+    "uiohook-napi": "^1.5.4"
   }
 }

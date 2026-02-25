@@ -93,7 +93,11 @@ export interface TrayAPI {
   closeDashboard(): void
   toggleTracking(): Promise<{ isTracking: boolean }>
   quit(): void
+  quitAndInstall(): Promise<void>
+  checkForUpdates(): Promise<void>
+  getPendingVersion(): Promise<string | null>
   onRefresh(callback: () => void): void
+  onUpdateReady(callback: (version: string) => void): void
 }
 
 declare global {

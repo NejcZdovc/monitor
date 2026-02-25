@@ -1,4 +1,5 @@
 import { app, ipcMain } from 'electron'
+import { checkForUpdates, getPendingVersion, quitAndInstall } from './auto-updater'
 import type { QueryEngine } from './data/query-engine'
 import type { TrackerManager } from './tracking/tracker-manager'
 
@@ -67,6 +68,11 @@ function registerIpcHandlers(queryEngine: QueryEngine, trackerManager: TrackerMa
     }
     return { isTracking: trackerManager.isTracking }
   })
+
+  // App
+  ipcMain.handle('app:quit-and-install', () => quitAndInstall())
+  ipcMain.handle('app:check-for-updates', () => checkForUpdates())
+  ipcMain.handle('app:get-pending-version', () => getPendingVersion())
 }
 
 export { registerIpcHandlers }

@@ -1,11 +1,11 @@
 import path from 'node:path'
 import { app, nativeImage, systemPreferences } from 'electron'
-import { updateElectronApp } from 'update-electron-app'
+import { initAutoUpdater } from './auto-updater'
 import { AppDatabase } from './data/database'
 import { QueryEngine } from './data/query-engine'
 import { registerIpcHandlers } from './ipc-handlers'
 import { TrackerManager } from './tracking/tracker-manager'
-import { createTray } from './tray'
+import { createTray, refreshTrayPopup } from './tray'
 import { closeDashboardWindow, createDashboardWindow } from './window-manager'
 
 // Single instance lock
@@ -17,14 +17,6 @@ if (!gotTheLock) {
 // Hide dock icon (menu bar app only)
 if (app.dock) {
   app.dock.hide()
-}
-
-// Auto-update only in packaged builds
-if (app.isPackaged) {
-  updateElectronApp({
-    updateInterval: '1 hour',
-    notifyUser: true,
-  })
 }
 
 let database: AppDatabase | undefined
@@ -74,6 +66,9 @@ app.whenReady().then(async () => {
 
   // Always show dashboard on startup
   createDashboardWindow()
+
+  // Check for updates (refresh tray popup when update is downloaded)
+  initAutoUpdater(() => refreshTrayPopup())
 })
 
 app.on('will-quit', () => {

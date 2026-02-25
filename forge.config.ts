@@ -24,6 +24,23 @@ const config: ForgeConfig = {
       // Include bindings lookup helpers used by native modules
       if (file.startsWith('/node_modules/bindings') || file.startsWith('/node_modules/file-uri-to-path')) return false
       if (file.startsWith('/node_modules/node-gyp-build')) return false
+      // electron-updater and its dependencies
+      if (file.startsWith('/node_modules/electron-updater')) return false
+      if (file.startsWith('/node_modules/builder-util-runtime')) return false
+      if (file.startsWith('/node_modules/lazy-val')) return false
+      if (file.startsWith('/node_modules/tiny-typed-emitter')) return false
+      if (file.startsWith('/node_modules/semver')) return false
+      if (file.startsWith('/node_modules/fs-extra')) return false
+      if (file.startsWith('/node_modules/graceful-fs')) return false
+      if (file.startsWith('/node_modules/jsonfile')) return false
+      if (file.startsWith('/node_modules/universalify')) return false
+      if (file.startsWith('/node_modules/js-yaml')) return false
+      if (file.startsWith('/node_modules/argparse')) return false
+      if (file.startsWith('/node_modules/lodash.escaperegexp')) return false
+      if (file.startsWith('/node_modules/lodash.isequal')) return false
+      if (file.startsWith('/node_modules/sax')) return false
+      if (file.startsWith('/node_modules/debug')) return false
+      if (file.startsWith('/node_modules/ms')) return false
       // Ignore everything else
       return true
     },
