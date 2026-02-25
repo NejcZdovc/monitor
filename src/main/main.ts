@@ -1,6 +1,6 @@
 import path from "node:path";
 import { app, Menu, nativeImage, systemPreferences } from "electron";
-import { checkForUpdates, initAutoUpdater } from "./auto-updater";
+import { checkForUpdates, checkForUpdatesSilently, initAutoUpdater } from "./auto-updater";
 import { AppDatabase } from "./data/database";
 import { QueryEngine } from "./data/query-engine";
 import { registerIpcHandlers } from "./ipc-handlers";
@@ -69,7 +69,13 @@ app.whenReady().then(async () => {
     {
       label: app.name,
       submenu: [
-        { role: "about" },
+        {
+          label: `About ${app.name}`,
+          click: () => {
+            app.showAboutPanel();
+            checkForUpdatesSilently();
+          },
+        },
         { type: "separator" },
         {
           label: "Check for Updates...",

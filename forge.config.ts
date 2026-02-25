@@ -10,6 +10,7 @@ const config: ForgeConfig = {
     name: 'Monitor',
     icon: './assets/icon',
     asar: true,
+    extraResource: ['./assets/app-update.yml'],
     ignore: (file: string) => {
       if (!file) return false
       // Include Vite build output
