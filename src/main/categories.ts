@@ -114,6 +114,14 @@ const BROWSER_TITLE_CATEGORIES: Record<string, string[]> = {
   Entertainment: ['youtube', 'netflix', 'twitch'],
 }
 
+const TERMINAL_TITLE_CATEGORIES: Record<string, string[]> = {
+  AI: ['claude code'],
+}
+
+const TERMINAL_TITLE_APP_NAMES: Record<string, string> = {
+  'claude code': 'Claude Code',
+}
+
 // Maps a browser title pattern to a display-friendly app name.
 // When a browser tab matches one of these patterns the session is stored
 // with the service name (e.g. "YouTube") instead of the browser name
@@ -135,6 +143,7 @@ const BROWSER_TITLE_APP_NAMES: Record<string, string> = {
 }
 
 const BROWSER_APPS: Set<string> = new Set(APP_CATEGORIES.Browsers.map((b) => b.toLowerCase()))
+const TERMINAL_APPS: Set<string> = new Set(APP_CATEGORIES.Terminal.map((t) => t.toLowerCase()))
 
 // Pre-built lookup map: normalized app name → category (avoids linear scan on every poll)
 const APP_CATEGORY_MAP = new Map<string, string>()
@@ -160,6 +169,15 @@ function resolveCategory(appName: string, windowTitle: string): string {
     }
     return 'Browsers'
   }
+  if (isTerminal(appName) && windowTitle) {
+    const titleLower = windowTitle.toLowerCase()
+    for (const [category, patterns] of Object.entries(TERMINAL_TITLE_CATEGORIES)) {
+      if (patterns.some((p) => titleLower.includes(p))) {
+        return category
+      }
+    }
+    return 'Terminal'
+  }
   const normalized = appName.toLowerCase().replace(/_/g, ' ')
   return APP_CATEGORY_MAP.get(normalized) || APP_CATEGORY_MAP.get(appName.toLowerCase()) || 'Other'
 }
@@ -183,6 +201,21 @@ function resolveBrowserAppName(appName: string, windowTitle: string): string {
 function isBrowser(appName: string): boolean {
   // Fast Set lookup covers exact names and underscore variants (e.g. brave_browser → brave browser)
   return BROWSER_APPS.has(appName.toLowerCase().replace(/_/g, ' '))
+}
+
+function isTerminal(appName: string): boolean {
+  return TERMINAL_APPS.has(appName.toLowerCase().replace(/_/g, ' '))
+}
+
+function resolveTerminalAppName(appName: string, windowTitle: string): string {
+  if (!isTerminal(appName) || !windowTitle) return appName
+  const titleLower = windowTitle.toLowerCase()
+  for (const [pattern, displayName] of Object.entries(TERMINAL_TITLE_APP_NAMES)) {
+    if (titleLower.includes(pattern)) {
+      return displayName
+    }
+  }
+  return appName
 }
 
 function isYouTube(appName: string, windowTitle: string): boolean {
@@ -262,7 +295,9 @@ export {
   isBrowser,
   isFaceTimeCall,
   isGoogleMeet,
+  isTerminal,
   isYouTube,
   resolveBrowserAppName,
   resolveCategory,
+  resolveTerminalAppName,
 }

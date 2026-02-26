@@ -9,9 +9,11 @@ import {
   isBrowser,
   isFaceTimeCall,
   isGoogleMeet,
+  isTerminal,
   isYouTube,
   resolveBrowserAppName,
   resolveCategory,
+  resolveTerminalAppName,
 } from '../src/main/categories'
 
 // ── APP_CATEGORIES constant ───────────────────────────────────────────────
@@ -93,6 +95,36 @@ describe('isBrowser', () => {
   test('returns false for unknown apps', () => {
     expect(isBrowser('RandomBrowser')).toBe(false)
     expect(isBrowser('Netscape')).toBe(false)
+  })
+})
+
+// ── isTerminal ────────────────────────────────────────────────────────────
+
+describe('isTerminal', () => {
+  test('recognizes all listed terminal apps', () => {
+    for (const terminal of APP_CATEGORIES.Terminal) {
+      expect(isTerminal(terminal)).toBe(true)
+    }
+  })
+
+  test('returns false for non-terminal apps', () => {
+    expect(isTerminal('Code')).toBe(false)
+    expect(isTerminal('Google Chrome')).toBe(false)
+    expect(isTerminal('Slack')).toBe(false)
+  })
+
+  test('is case-insensitive', () => {
+    expect(isTerminal('iterm2')).toBe(true)
+    expect(isTerminal('TERMINAL')).toBe(true)
+    expect(isTerminal('ghostty')).toBe(true)
+  })
+
+  test('handles underscore variants', () => {
+    expect(isTerminal('i_term2')).toBe(false)
+  })
+
+  test('returns false for empty string', () => {
+    expect(isTerminal('')).toBe(false)
   })
 })
 
@@ -287,6 +319,26 @@ describe('resolveCategory', () => {
       expect(resolveCategory('Safari', '')).toBe('Browsers')
     })
   })
+
+  describe('terminal title-based categories', () => {
+    test('detects Claude Code in terminal as AI', () => {
+      expect(resolveCategory('iTerm2', '⠐ Claude Code')).toBe('AI')
+      expect(resolveCategory('Terminal', 'claude code')).toBe('AI')
+      expect(resolveCategory('Warp', 'Claude Code — ~/Work/monitor')).toBe('AI')
+      expect(resolveCategory('Ghostty', 'CLAUDE CODE')).toBe('AI')
+    })
+
+    test('defaults to Terminal for non-matching terminal titles', () => {
+      expect(resolveCategory('iTerm2', 'bash — ~/Work')).toBe('Terminal')
+      expect(resolveCategory('Terminal', 'vim main.ts')).toBe('Terminal')
+      expect(resolveCategory('Warp', 'npm start')).toBe('Terminal')
+    })
+
+    test('defaults to Terminal for terminals with empty title', () => {
+      expect(resolveCategory('iTerm2', '')).toBe('Terminal')
+      expect(resolveCategory('Terminal', '')).toBe('Terminal')
+    })
+  })
 })
 
 // ── resolveBrowserAppName ─────────────────────────────────────────────────
@@ -340,6 +392,35 @@ describe('resolveBrowserAppName', () => {
   test('is case-insensitive on title matching', () => {
     expect(resolveBrowserAppName('Google Chrome', 'YOUTUBE - Home')).toBe('YouTube')
     expect(resolveBrowserAppName('Safari', 'NETFLIX - show')).toBe('Netflix')
+  })
+})
+
+// ── resolveTerminalAppName ────────────────────────────────────────────────
+
+describe('resolveTerminalAppName', () => {
+  test('maps Claude Code in terminal to Claude Code', () => {
+    expect(resolveTerminalAppName('iTerm2', '⠐ Claude Code')).toBe('Claude Code')
+    expect(resolveTerminalAppName('Terminal', 'claude code')).toBe('Claude Code')
+    expect(resolveTerminalAppName('Warp', 'Claude Code — ~/Work')).toBe('Claude Code')
+  })
+
+  test('is case-insensitive on title matching', () => {
+    expect(resolveTerminalAppName('iTerm2', 'CLAUDE CODE')).toBe('Claude Code')
+    expect(resolveTerminalAppName('Ghostty', 'Claude code')).toBe('Claude Code')
+  })
+
+  test('returns original app name for non-matching terminal titles', () => {
+    expect(resolveTerminalAppName('iTerm2', 'bash — ~/Work')).toBe('iTerm2')
+    expect(resolveTerminalAppName('Terminal', 'vim main.ts')).toBe('Terminal')
+  })
+
+  test('returns original app name for non-terminal apps', () => {
+    expect(resolveTerminalAppName('Code', 'Claude Code')).toBe('Code')
+    expect(resolveTerminalAppName('Google Chrome', 'Claude Code')).toBe('Google Chrome')
+  })
+
+  test('returns original app name when title is empty', () => {
+    expect(resolveTerminalAppName('iTerm2', '')).toBe('iTerm2')
   })
 })
 

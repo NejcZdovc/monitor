@@ -2,7 +2,13 @@ import { execFile } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { isFaceTimeCall, isGoogleMeet, resolveBrowserAppName, resolveCategory } from '../categories'
+import {
+  isFaceTimeCall,
+  isGoogleMeet,
+  resolveBrowserAppName,
+  resolveCategory,
+  resolveTerminalAppName,
+} from '../categories'
 import { OSASCRIPT_TIMEOUT_MS, POLL_SAFETY_TIMEOUT_MS, WINDOW_POLL_INTERVAL_MS } from '../constants'
 import type { ActivityStore } from '../data/activity-store'
 import type { CallStore } from '../data/call-store'
@@ -129,7 +135,8 @@ class WindowTracker {
         if (appName === 'Monitor' || appName === 'Electron') return
 
         const category = resolveCategory(appName, windowTitle)
-        const resolvedApp = resolveBrowserAppName(appName, windowTitle)
+        let resolvedApp = resolveBrowserAppName(appName, windowTitle)
+        resolvedApp = resolveTerminalAppName(resolvedApp, windowTitle)
 
         // Split sessions at hour boundaries first, before any close/open logic
         this._splitAtHourBoundary()
