@@ -85,6 +85,8 @@ export interface MonitorAPI {
   getTrackingStatus(): Promise<{ isTracking: boolean }>
   toggleTracking(): Promise<{ isTracking: boolean }>
   isDev(): Promise<boolean>
+  quitAndInstall(): Promise<void>
+  onUpdateReady(callback: () => void): void
 }
 
 export interface TrayAPI {

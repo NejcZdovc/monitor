@@ -6,6 +6,7 @@ const RETRY_DELAY_MS = 60_000
 const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000
 
 let pendingVersion: string | null = null
+let onUpdateDownloaded: (() => void) | null = null
 let userInitiated = false
 let retryCount = 0
 
@@ -16,7 +17,9 @@ function scheduleRetry(): void {
   setTimeout(() => autoUpdater.checkForUpdates(), RETRY_DELAY_MS)
 }
 
-function initAutoUpdater(): void {
+function initAutoUpdater(onReady: () => void): void {
+  onUpdateDownloaded = onReady
+
   if (!app.isPackaged) return
 
   autoUpdater.autoDownload = true
@@ -65,6 +68,7 @@ function initAutoUpdater(): void {
     for (const win of BrowserWindow.getAllWindows()) {
       win.webContents.send('app:update-ready', info.version)
     }
+    onUpdateDownloaded?.()
   })
 
   autoUpdater.checkForUpdates()

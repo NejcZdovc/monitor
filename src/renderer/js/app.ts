@@ -9,6 +9,7 @@ import { InputChart } from './components/input-chart'
 import { ProjectChart } from './components/project-chart'
 import { SummaryCards } from './components/summary-cards'
 import { TimeRangePicker } from './components/time-range-picker'
+import * as toast from './components/toast'
 import { formatDayLabel, getDayRange, getThisMonth, getThisWeek, getToday, type TimeRange } from './date-utils'
 
 class Dashboard {
@@ -77,6 +78,14 @@ class Dashboard {
     this._currentRange = getToday()
     this._parentRange = null
     this.onRangeChange(this._currentRange)
+
+    // Auto-update notification
+    window.monitor.onUpdateReady(() => {
+      toast.show('A new version is ready', {
+        label: 'Restart',
+        onClick: () => window.monitor.quitAndInstall(),
+      })
+    })
 
     // Auto-refresh every 30 seconds, but only when the dashboard window is focused
     setInterval(() => {

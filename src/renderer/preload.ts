@@ -19,4 +19,13 @@ contextBridge.exposeInMainWorld('monitor', {
   getTrackingStatus: () => ipcRenderer.invoke('get-tracking-status'),
   toggleTracking: () => ipcRenderer.invoke('toggle-tracking'),
   isDev: () => ipcRenderer.invoke('is-dev'),
+
+  // App
+  quitAndInstall: () => ipcRenderer.invoke('app:quit-and-install'),
+
+  // Events
+  onUpdateReady: (callback: () => void) => {
+    ipcRenderer.removeAllListeners('app:update-ready')
+    ipcRenderer.on('app:update-ready', () => callback())
+  },
 })
